@@ -22,7 +22,7 @@ export class GoogleOAuthService {
     return url.toString();
   }
 
-  async exchangeCode(code, meta) {
+  async exchangeCode(code, meta = {}) {
     const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
       code,
       client_id: env.googleClientId,

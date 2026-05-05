@@ -10,9 +10,13 @@ const distractionLogSchema = new mongoose.Schema(
     metadata: {
       device: { type: String, default: "desktop" },
       category: { type: String, default: "general" },
-    },
+      source: { type: String, default: "manual" },
+      site: { type: String, default: "" },
+      url: { type: String, default: "" },
+      pageTitle: { type: String, default: "" }
+    }
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 export const DistractionLog = mongoose.model("DistractionLog", distractionLogSchema);

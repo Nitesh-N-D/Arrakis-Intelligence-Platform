@@ -11,10 +11,10 @@ import {
 } from "recharts";
 import GlassCard from "./GlassCard";
 
-export function FocusTrendChart({ data }) {
+export function SpiceTrendChart({ data }) {
   return (
     <GlassCard>
-      <h3 className="font-display text-2xl text-amber-100">Spice Harvest Trend</h3>
+      <div className="font-display text-2xl text-amber-100">Spice Harvest Trend</div>
       <div className="mt-6 h-72">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
@@ -39,7 +39,7 @@ export function FocusTrendChart({ data }) {
 export function StormTrendChart({ data }) {
   return (
     <GlassCard>
-      <h3 className="font-display text-2xl text-orange-100">Storm Pressure Trend</h3>
+      <div className="font-display text-2xl text-orange-100">Storm Pressure Trend</div>
       <div className="mt-6 h-72">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>

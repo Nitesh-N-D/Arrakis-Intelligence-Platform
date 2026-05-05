@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     setAccessToken(accessToken);
+
     if (accessToken) {
       localStorage.setItem("arrakis_access_token", accessToken);
     } else {
@@ -28,6 +29,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!accessToken) return;
+
     authService
       .me()
       .then((response) => setUser(response.data))
@@ -50,6 +52,7 @@ export function AuthProvider({ children }) {
         if (refreshToken) {
           await authService.logout(refreshToken).catch(() => {});
         }
+
         setUser(null);
         setToken(null);
         setRefreshToken(null);

@@ -6,7 +6,6 @@ import { initializeSocket } from "./socket/index.js";
 
 const startServer = async () => {
   await connectDatabase();
-
   const server = http.createServer(app);
   initializeSocket(server);
 
@@ -16,6 +15,6 @@ const startServer = async () => {
 };
 
 startServer().catch((error) => {
-  console.error("Failed to start Arrakis server", error);
+  console.error("Failed to start server", error);
   process.exit(1);
 });

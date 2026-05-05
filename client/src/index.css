@@ -1,24 +1,52 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  @apply bg-void text-white font-body;
-  background-image:
-    radial-gradient(circle at 20% 20%, rgba(249, 115, 22, 0.18), transparent 30%),
-    radial-gradient(circle at 80% 0%, rgba(246, 196, 83, 0.12), transparent 25%),
-    linear-gradient(180deg, #050505 0%, #0c0c0c 100%);
+  @apply bg-void font-body text-white;
   min-height: 100vh;
+  background-image:
+    radial-gradient(circle at 18% 0%, rgba(249, 115, 22, 0.24), transparent 26%),
+    radial-gradient(circle at 82% 12%, rgba(245, 158, 11, 0.16), transparent 18%),
+    radial-gradient(circle at 50% 100%, rgba(255, 255, 255, 0.03), transparent 24%),
+    linear-gradient(180deg, #0a0a0a 0%, #111111 100%);
 }
 
 #root {
   min-height: 100vh;
 }
 
+* {
+  scrollbar-color: rgba(245, 158, 11, 0.4) rgba(255, 255, 255, 0.04);
+}
+
 .glass-panel {
-  @apply border border-white/10 bg-white/5 backdrop-blur-xl shadow-dune;
+  @apply rounded-card border border-border-subtle bg-surface-glass shadow-card backdrop-blur-glass;
+}
+
+.text-gradient {
+  @apply bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent;
+}
+
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-orange-400/50 focus:ring-offset-2 focus:ring-offset-void;
+}
+
+input,
+select,
+button,
+textarea {
+  color: inherit;
 }

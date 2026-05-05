@@ -4,6 +4,12 @@ export const platformService = {
   dashboard: () => http.get("/analytics/dashboard"),
   prescience: () => http.get("/prescience/analyze"),
   analyzeSkills: (payload) => http.post("/skills/analyze", payload),
+  harvestSpice: (payload) => http.post("/spice/harvest", payload),
   logStorm: (payload) => http.post("/storm/log", payload),
-  harvestSpice: (payload) => http.post("/spice/harvest", payload)
+  roadmap: () => http.get("/roadmap/current"),
+  completeRoadmapPhase: (phaseId) => http.post(`/roadmap/phases/${phaseId}/complete`),
+  leaderboardUsers: () => http.get("/leaderboard/users"),
+  leaderboardTeams: () => http.get("/leaderboard/teams"),
+  createTeam: (payload) => http.post("/team/create", payload),
+  joinTeam: (payload) => http.post("/team/join", payload)
 };

@@ -1,0 +1,237 @@
+:root {
+  color-scheme: dark;
+  --bg: #0a0a0a;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-strong: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.12);
+  --text: #ffffff;
+  --muted: #9ca3af;
+  --accent-start: #f97316;
+  --accent-end: #facc15;
+  --danger: #fb923c;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --glow: 0 0 24px rgba(249, 115, 22, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(249, 115, 22, 0.18), transparent 28%),
+    linear-gradient(180deg, #111111 0%, var(--bg) 100%);
+  color: var(--text);
+}
+
+.arrakis-body {
+  min-width: 380px;
+}
+
+.panel {
+  padding: 18px;
+}
+
+.panel-header,
+.inline-header,
+.panel-footer,
+.storm-meta,
+.storm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-header h1,
+.storm-card h1 {
+  margin: 4px 0 0;
+  font-size: 1.45rem;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.card-stack {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.glass-card,
+.storm-card {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow);
+}
+
+.glass-card {
+  padding: 14px;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.field-help,
+.active-site,
+.status-text,
+.storm-copy {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.text-input,
+.text-area {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.32);
+  color: var(--text);
+  padding: 12px 13px;
+  outline: none;
+}
+
+.text-input:focus,
+.text-area:focus {
+  border-color: rgba(250, 204, 21, 0.5);
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.12);
+}
+
+.text-area {
+  resize: vertical;
+  min-height: 90px;
+}
+
+.primary-button,
+.secondary-button {
+  border: 0;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.primary-button {
+  color: #111111;
+  background: linear-gradient(135deg, var(--accent-start), var(--accent-end));
+  box-shadow: var(--glow);
+}
+
+.secondary-button {
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.primary-button:hover,
+.secondary-button:hover {
+  transform: translateY(-1px);
+}
+
+.panel-footer {
+  margin-top: 16px;
+}
+
+.panel-footer .primary-button {
+  width: 100%;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #525252;
+  box-shadow: 0 0 12px rgba(82, 82, 82, 0.6);
+}
+
+.status-dot[data-state="success"] {
+  background: #facc15;
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.55);
+}
+
+.status-dot[data-state="warning"] {
+  background: #fb923c;
+  box-shadow: 0 0 12px rgba(251, 146, 60, 0.55);
+}
+
+.status-dot[data-state="error"] {
+  background: #ef4444;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.55);
+}
+
+.storm-body {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.storm-shell {
+  width: min(720px, 100%);
+}
+
+.storm-card {
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.storm-card::after {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  background: radial-gradient(circle, rgba(249, 115, 22, 0.15) 0%, transparent 55%);
+  animation: stormPulse 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.storm-meta {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.storm-chip {
+  border: 1px solid rgba(250, 204, 21, 0.24);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(249, 115, 22, 0.1);
+  font-size: 0.9rem;
+}
+
+.storm-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+@keyframes stormPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.04);
+  }
+}

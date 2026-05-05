@@ -4,8 +4,9 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/
 
 const refreshTokenRepository = new RefreshTokenRepository();
 
-const parseExpiryToMs = (value) => {
+const parseDuration = (value) => {
   const amount = Number.parseInt(value, 10);
+
   if (value.endsWith("d")) return amount * 24 * 60 * 60 * 1000;
   if (value.endsWith("h")) return amount * 60 * 60 * 1000;
   if (value.endsWith("m")) return amount * 60 * 1000;
@@ -20,7 +21,7 @@ export class TokenService {
     await refreshTokenRepository.create({
       user: user.id,
       token: refreshToken,
-      expiresAt: new Date(Date.now() + parseExpiryToMs(env.jwtRefreshExpiresIn)),
+      expiresAt: new Date(Date.now() + parseDuration(env.jwtRefreshExpiresIn)),
       userAgent: meta.userAgent || "",
       ipAddress: meta.ipAddress || ""
     });

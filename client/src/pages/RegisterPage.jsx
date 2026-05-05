@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import GlassCard from "../components/GlassCard";
+import AuthShell from "../components/ui/AuthShell";
+import Button from "../components/ui/Button";
+import GoogleButton from "../components/ui/GoogleButton";
 import { useAuth } from "../hooks/useAuth";
 import { authService } from "../services/authService";
 
@@ -14,42 +16,110 @@ export default function RegisterPage() {
     targetRole: "AI Systems Engineer"
   });
   const [error, setError] = useState("");
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const submit = async (event) => {
     event.preventDefault();
+
     try {
       const response = await authService.register(form);
       setUser(response.data.user);
       setAccessToken(response.data.accessToken);
       setRefreshToken(response.data.refreshToken);
       navigate("/");
-    } catch (err) {
-      setError(err.message || "Unable to register");
+    } catch (registerError) {
+      setError(registerError.message || "Unable to register");
+    }
+  };
+
+  const startGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    setError("");
+
+    try {
+      const response = await authService.googleUrl();
+      if (!response.data?.enabled) {
+        throw new Error("Google OAuth is not configured for this environment.");
+      }
+
+      window.location.href = response.data.url || authService.googleStartUrl();
+    } catch (googleAuthError) {
+      setError(googleAuthError.message || "Unable to start Google sign-in");
+      setGoogleLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
-      <GlassCard className="w-full max-w-xl">
-        <p className="text-sm uppercase tracking-[0.3em] text-white/50">Operative Onboarding</p>
-        <h1 className="mt-4 font-display text-5xl text-amber-100">Claim Your Spice Path</h1>
-        <form className="mt-8 grid gap-4" onSubmit={submit}>
-          <input className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3" placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <input className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <input className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3" type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-          <select className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3" value={form.targetRole} onChange={(e) => setForm({ ...form, targetRole: e.target.value })}>
+    <AuthShell
+      eyebrow="Operative onboarding"
+      title="Claim your spice path and begin ascension"
+      description="Create your identity, choose your target discipline, and let the system enforce your next meaningful progression."
+      footer={
+        <>
+          Already in the sietch?{" "}
+          <Link className="text-amber-200 transition hover:text-white" to="/login">
+            Login
+          </Link>
+        </>
+      }
+    >
+      <form className="grid gap-4" onSubmit={submit}>
+        <div>
+          <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Name</label>
+          <input
+            className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
+            placeholder="Paul Atreides"
+            value={form.name}
+            onChange={(event) => setForm({ ...form, name: event.target.value })}
+          />
+        </div>
+        <div>
+          <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Email</label>
+          <input
+            className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
+            placeholder="operative@arrakis.ai"
+            value={form.email}
+            onChange={(event) => setForm({ ...form, email: event.target.value })}
+          />
+        </div>
+        <div>
+          <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Password</label>
+          <input
+            className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
+            type="password"
+            placeholder="Password"
+            value={form.password}
+            onChange={(event) => setForm({ ...form, password: event.target.value })}
+          />
+        </div>
+        <div>
+          <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Target role</label>
+          <select
+            className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
+            value={form.targetRole}
+            onChange={(event) => setForm({ ...form, targetRole: event.target.value })}
+          >
             <option>AI Systems Engineer</option>
             <option>Product Engineering Lead</option>
           </select>
-          {error ? <p className="text-sm text-red-300">{error}</p> : null}
-          <button className="rounded-2xl bg-gradient-to-r from-orange-500 to-amber-400 px-4 py-3 font-semibold text-black">
-            Register
-          </button>
-        </form>
-        <p className="mt-6 text-sm text-white/60">
-          Already in the sietch? <Link className="text-amber-200" to="/login">Login</Link>
-        </p>
-      </GlassCard>
-    </div>
+        </div>
+        {error ? (
+          <div className="rounded-card border border-red-300/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            {error}
+          </div>
+        ) : null}
+        <Button className="w-full" type="submit">
+          Register
+        </Button>
+      </form>
+
+      <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-[0.3em] text-white/35">
+        <div className="h-px flex-1 bg-white/10" />
+        or continue
+        <div className="h-px flex-1 bg-white/10" />
+      </div>
+
+      <GoogleButton disabled={googleLoading} onClick={startGoogleSignIn} />
+    </AuthShell>
   );
 }

@@ -1,5 +1,6 @@
 export default function SpiceMeter({ totalSpice }) {
-  const progress = Math.min((totalSpice % 500) / 5, 100);
+  const progress = Math.min(((totalSpice % 150) / 150) * 100, 100);
+
   return (
     <div>
       <div className="mb-3 flex items-center justify-between text-sm text-white/70">

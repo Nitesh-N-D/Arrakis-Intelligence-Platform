@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arrakis Intelligence</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="arrakis-body">
+    <main class="panel">
+      <section class="panel-header">
+        <div>
+          <p class="eyebrow">Arrakis Intelligence</p>
+          <h1>Storm Control</h1>
+        </div>
+        <span class="status-dot" id="sync-state"></span>
+      </section>
+
+      <section class="card-stack">
+        <div class="glass-card">
+          <label class="field-label" for="backend-url">Backend API URL</label>
+          <input id="backend-url" class="text-input" type="url" placeholder="http://localhost:5000/api/v1" />
+          <p class="field-help">Use the Arrakis API base URL. `/api/v1` is added automatically if missing.</p>
+        </div>
+
+        <div class="glass-card">
+          <label class="field-label" for="jwt-token">JWT Access Token</label>
+          <textarea id="jwt-token" class="text-area" rows="4" placeholder="Paste arrakis_access_token"></textarea>
+          <p class="field-help">The extension uses this token for `POST /storm/log`.</p>
+        </div>
+
+        <div class="glass-card">
+          <div class="inline-header">
+            <div>
+              <label class="field-label" for="blocked-sites">Blocked Sites</label>
+              <p class="field-help">One domain per line, like `youtube.com` or `reddit.com`.</p>
+            </div>
+            <button id="add-current-site" class="secondary-button" type="button">Add Current</button>
+          </div>
+          <textarea id="blocked-sites" class="text-area" rows="7" placeholder="youtube.com&#10;instagram.com"></textarea>
+          <p class="active-site" id="active-site">Current site: detecting...</p>
+        </div>
+
+        <div class="glass-card">
+          <p class="field-label">Delivery Status</p>
+          <p class="status-text" id="status-message">Loading extension state...</p>
+          <p class="field-help" id="status-time"></p>
+        </div>
+      </section>
+
+      <footer class="panel-footer">
+        <button id="save-settings" class="primary-button" type="button">Save Configuration</button>
+      </footer>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+  </html>

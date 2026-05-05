@@ -7,9 +7,9 @@ const refreshTokenSchema = new mongoose.Schema(
     expiresAt: { type: Date, required: true },
     revokedAt: { type: Date, default: null },
     userAgent: { type: String, default: "" },
-    ipAddress: { type: String, default: "" },
+    ipAddress: { type: String, default: "" }
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 export const RefreshToken = mongoose.model("RefreshToken", refreshTokenSchema);

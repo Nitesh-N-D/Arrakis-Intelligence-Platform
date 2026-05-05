@@ -8,8 +8,8 @@ export const initializeSocket = (server) => {
   io = new Server(server, {
     cors: {
       origin: env.clientUrl,
-      credentials: true,
-    },
+      credentials: true
+    }
   });
 
   io.use((socket, next) => {
@@ -19,6 +19,7 @@ export const initializeSocket = (server) => {
         const payload = verifyAccessToken(token);
         socket.data.userId = payload.sub;
       }
+
       next();
     } catch (_error) {
       next(new Error("Unauthorized socket connection"));

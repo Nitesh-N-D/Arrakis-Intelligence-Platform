@@ -1,9 +1,15 @@
 import mongoose from "mongoose";
 import { FocusSession } from "../models/FocusSession.js";
 
+const toObjectId = (value) => new mongoose.Types.ObjectId(value);
+
 export class FocusSessionRepository {
   create(data) {
     return FocusSession.create(data);
+  }
+
+  countByUser(userId) {
+    return FocusSession.countDocuments({ user: toObjectId(userId), status: "completed" });
   }
 
   aggregateDaily(userId, days = 7) {
@@ -12,7 +18,7 @@ export class FocusSessionRepository {
     startDate.setHours(0, 0, 0, 0);
 
     return FocusSession.aggregate([
-      { $match: { user: new mongoose.Types.ObjectId(userId), completedAt: { $gte: startDate } } },
+      { $match: { user: toObjectId(userId), completedAt: { $gte: startDate } } },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$completedAt" } },

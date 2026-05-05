@@ -1,14 +1,41 @@
-import { env } from "../config/env.js";
-
 export class StormEngine {
-  evaluate({ totalMinutes, thresholdMinutes = env.stormThresholdMinutes }) {
-    const ratio = totalMinutes / thresholdMinutes;
+  evaluate(totalMinutes) {
+    if (totalMinutes < 60) {
+      return {
+        stormModeActive: false,
+        stormLevel: "CALM",
+        escalationLevel: "CALM",
+        totalMinutes,
+        nextThreshold: 60
+      };
+    }
+
+    if (totalMinutes < 120) {
+      return {
+        stormModeActive: true,
+        stormLevel: "DUST",
+        escalationLevel: "DUST",
+        totalMinutes,
+        nextThreshold: 120
+      };
+    }
+
+    if (totalMinutes < 180) {
+      return {
+        stormModeActive: true,
+        stormLevel: "SANDSTORM",
+        escalationLevel: "SANDSTORM",
+        totalMinutes,
+        nextThreshold: 180
+      };
+    }
+
     return {
-      stormModeActive: totalMinutes >= thresholdMinutes,
-      escalationLevel: ratio >= 1.5 ? "critical" : ratio >= 1 ? "high" : ratio >= 0.7 ? "elevated" : "calm",
+      stormModeActive: true,
+      stormLevel: "SPICE STORM",
+      escalationLevel: "SPICE STORM",
       totalMinutes,
-      thresholdMinutes,
-      pressureIndex: Math.min(Math.round(ratio * 100), 200)
+      nextThreshold: null
     };
   }
 }

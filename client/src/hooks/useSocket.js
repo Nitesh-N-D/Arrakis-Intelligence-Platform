@@ -12,6 +12,7 @@ export function useSocket(token) {
     });
 
     setSocket(connection);
+
     return () => {
       connection.close();
       setSocket(null);

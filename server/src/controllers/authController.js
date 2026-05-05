@@ -1,12 +1,27 @@
 import { UserRepository } from "../repositories/UserRepository.js";
 import { AuthService } from "../services/authService.js";
-import { GoogleOAuthService } from "../services/googleOAuthService.js";
+import { OperativeStateService } from "../services/operativeStateService.js";
+import { TokenService } from "../services/tokenService.js";
+import { env } from "../config/env.js";
+import { isGoogleOAuthConfigured } from "../config/passport.js";
+import { ApiError } from "../utils/ApiError.js";
 
 const authService = new AuthService();
-const googleOAuthService = new GoogleOAuthService();
 const userRepository = new UserRepository();
+const operativeStateService = new OperativeStateService();
+const tokenService = new TokenService();
 
-const userResponse = (user) => ({
+const appendQuery = (baseUrl, params) => {
+  const url = new URL(baseUrl);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      url.searchParams.set(key, String(value));
+    }
+  });
+  return url.toString();
+};
+
+const serializeUser = (user) => ({
   id: user.id,
   name: user.name,
   email: user.email,
@@ -16,7 +31,15 @@ const userResponse = (user) => ({
   targetRole: user.targetRole,
   focusStreak: user.focusStreak,
   stormModeActive: user.stormModeActive,
-  skills: user.skills
+  skills: user.skills,
+  team: user.team
+    ? {
+        id: user.team.id || user.team,
+        name: user.team.name || null,
+        totalSpice: user.team.totalSpice,
+        totalStreak: user.team.totalStreak
+      }
+    : null
 });
 
 export class AuthController {
@@ -29,7 +52,7 @@ export class AuthController {
     res.status(201).json({
       success: true,
       data: {
-        user: userResponse(result.user),
+        user: serializeUser(result.user),
         accessToken: result.accessToken,
         refreshToken: result.refreshToken
       }
@@ -45,7 +68,7 @@ export class AuthController {
     res.json({
       success: true,
       data: {
-        user: userResponse(result.user),
+        user: serializeUser(result.user),
         accessToken: result.accessToken,
         refreshToken: result.refreshToken
       }
@@ -68,33 +91,44 @@ export class AuthController {
 
   async me(req, res) {
     const user = await userRepository.findById(req.user.id);
-    res.json({ success: true, data: userResponse(user) });
+    const syncedUser = await operativeStateService.syncUserState(user);
+    res.json({ success: true, data: serializeUser(syncedUser) });
   }
 
   async googleUrl(_req, res) {
-    const url = googleOAuthService.getAuthorizationUrl();
     res.json({
       success: true,
       data: {
-        enabled: Boolean(url),
-        url
+        enabled: isGoogleOAuthConfigured(),
+        url: isGoogleOAuthConfigured() ? `${env.googleRedirectUri.replace(/\/callback$/, "")}` : null
       }
     });
   }
 
+  async ensureGoogleConfigured(_req, _res, next) {
+    if (!isGoogleOAuthConfigured()) {
+      return next(new ApiError(503, "Google OAuth is not configured"));
+    }
+
+    return next();
+  }
+
   async googleCallback(req, res) {
-    const result = await googleOAuthService.exchangeCode(req.body.code || req.query.code, {
+    const tokens = await tokenService.issueTokens(req.user, {
       userAgent: req.headers["user-agent"],
       ipAddress: req.ip
     });
 
-    res.json({
-      success: true,
-      data: {
-        user: userResponse(result.user),
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken
-      }
+    const redirectUrl = appendQuery(env.googleSuccessRedirectUrl, {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      provider: "google"
     });
+
+    res.redirect(redirectUrl);
+  }
+
+  async googleFailure(_req, res) {
+    res.redirect(env.googleFailureRedirectUrl);
   }
 }

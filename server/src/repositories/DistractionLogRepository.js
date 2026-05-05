@@ -1,9 +1,15 @@
 import mongoose from "mongoose";
 import { DistractionLog } from "../models/DistractionLog.js";
 
+const toObjectId = (value) => new mongoose.Types.ObjectId(value);
+
 export class DistractionLogRepository {
   create(data) {
     return DistractionLog.create(data);
+  }
+
+  countByUser(userId) {
+    return DistractionLog.countDocuments({ user: toObjectId(userId) });
   }
 
   aggregateDaily(userId, days = 7) {
@@ -12,7 +18,7 @@ export class DistractionLogRepository {
     startDate.setHours(0, 0, 0, 0);
 
     return DistractionLog.aggregate([
-      { $match: { user: new mongoose.Types.ObjectId(userId), loggedAt: { $gte: startDate } } },
+      { $match: { user: toObjectId(userId), loggedAt: { $gte: startDate } } },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$loggedAt" } },
@@ -29,7 +35,7 @@ export class DistractionLogRepository {
     startOfDay.setHours(0, 0, 0, 0);
 
     return DistractionLog.aggregate([
-      { $match: { user: new mongoose.Types.ObjectId(userId), loggedAt: { $gte: startOfDay } } },
+      { $match: { user: toObjectId(userId), loggedAt: { $gte: startOfDay } } },
       {
         $group: {
           _id: "$user",

@@ -1,6 +1,6 @@
-import { getIo } from "../socket/index.js";
 import { AnalyticsService } from "../services/analyticsService.js";
 import { StormService } from "../services/stormService.js";
+import { getIo } from "../socket/index.js";
 
 const stormService = new StormService();
 const analyticsService = new AnalyticsService();
@@ -22,7 +22,8 @@ export class StormController {
       success: true,
       data: {
         log: result.log,
-        stormState: result.stormState
+        stormState: result.stormState,
+        metadata: result.log.metadata
       }
     });
   }

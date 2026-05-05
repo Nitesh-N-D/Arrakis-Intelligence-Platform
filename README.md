@@ -1,11 +1,11 @@
 # Arrakis Intelligence Platform
 
-Production-grade SaaS platform for skill-gap intelligence, focus analytics, distraction control, and realtime behavioral feedback.
+Arrakis Intelligence Platform is a production-oriented behavioral intelligence SaaS system built to measure discipline, track focus, detect distraction pressure, guide skill growth, predict burnout, and enforce long-term progression.
 
-## 1. High-Level Architecture
+## 1. Architecture
 
 ```text
-client (React + Vite + Tailwind + Recharts + Framer Motion)
+client (React + Vite + Tailwind + Framer Motion + Recharts)
   -> REST + Socket.io
 server (Express clean architecture)
   -> controllers
@@ -13,36 +13,56 @@ server (Express clean architecture)
   -> repositories
   -> models
   -> middleware
-  -> dune engines
-MongoDB Atlas / local MongoDB
+  -> dune domain engines
+mongodb (MongoDB / Atlas)
 ```
+
+Core domain engines:
+- `SpiceEngine`: fixed focus-to-spice conversion.
+- `StormEngine`: daily distraction aggregation into CALM, DUST, SANDSTORM, and SPICE STORM.
+- `SkillAnalyzerService`: weighted discipline map and ordered learning priority.
+- `RoadmapService`: persisted multi-phase ascension roadmap with auto-advance.
+- `PrescienceService`: burnout-risk prediction and behavioral guidance.
 
 ## 2. Database Schema
 
 ### User
-- Identity, role, provider
-- Skills array with proficiency levels
-- Target role and personalization preferences
-- Total spice, rank, streak, storm state
+- Identity and auth fields
+- Role and OAuth provider
+- Skills array with levels
+- Target role
+- Total spice
+- Current rank
+- Focus streak
+- Last active date
+- Storm mode state
 
 ### FocusSession
-- Session type, duration, timestamps
-- Productivity score
+- Duration
+- Session type
 - Spice earned
+- Timestamps
+- Productivity score
 
 ### DistractionLog
-- App/source
+- App/source name
 - Duration
 - Severity
-- Metadata and logged time
+- Logged time
 
 ### RefreshToken
-- User relation
-- Token, expiry, revocation metadata
+- User reference
+- Token lifecycle metadata
 
-## 3. Backend Implementation
+### RoadmapPlan
+- Persisted roadmap per user
+- Ordered phases
+- Phase status (`locked`, `active`, `done`, `skipped`)
+- Tasks and duration
 
-Server structure:
+## 3. Backend
+
+Server layout:
 
 ```text
 server/
@@ -61,27 +81,20 @@ server/
   docs/
 ```
 
-Core engines:
-- `SpiceEngine`: converts focus sessions into spice gain.
-- `StormEngine`: aggregates distraction time and activates Storm Mode.
-- `RankEngine`: maps total spice to progression tiers.
-- `SkillAnalyzerService`: weighted gap analysis, completion score, and roadmap generation.
-- `PrescienceService`: burnout-risk heuristics and recommendations.
+Implemented capabilities:
+- JWT auth with refresh tokens
+- Google OAuth-ready structure
+- Protected routes middleware
+- Focus harvest storage and streak calculation
+- Real storm logging and level calculation
+- Realtime `spice:update`, `storm:update`, and `streak:update`
+- Skill-gap analysis with weighted scoring
+- Persisted roadmap progression
+- Dashboard and prescience analytics
 
-Key endpoints:
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/refresh`
-- `GET /api/v1/auth/me`
-- `POST /api/v1/skills/analyze`
-- `POST /api/v1/spice/harvest`
-- `POST /api/v1/storm/log`
-- `GET /api/v1/analytics/dashboard`
-- `GET /api/v1/prescience/analyze`
+## 4. Frontend
 
-## 4. Frontend Implementation
-
-Client structure:
+Client layout:
 
 ```text
 client/
@@ -93,137 +106,124 @@ client/
     context/
 ```
 
-UI modules:
-- Authentication screens
-- Prescience dashboard
-- Storm overlay animation
+Implemented capabilities:
+- Login and registration
+- Live dashboard with glassmorphism UI
+- Real countdown timer with pause/resume/reset
+- Auto-harvest on timer completion
 - Spice meter and rank badge
-- Focus and storm Recharts visualizations
-- Live websocket updates for storm, rank, and analytics refresh
+- Storm overlay
+- Recharts analytics
+- Prescience recommendation panel
+- Discipline map and roadmap completion flow
 
-## 5. Realtime Integration
+## 5. Timer System
+
+Exact focus rules:
+- `25 minutes -> 10 spice`
+- `50 minutes -> 25 spice`
+
+Timer behavior:
+- Start on `Harvest 25` or `Harvest 50`
+- Buttons lock during active session
+- Pause and resume supported
+- Completion auto-calls `/spice/harvest`
+- UI updates via REST refresh and Socket.io events
+
+## 6. Realtime
 
 Socket events:
-- `storm:update`
 - `spice:update`
-- `rank:update`
+- `storm:update`
+- `streak:update`
 - `analytics:update`
 
-Clients authenticate sockets with the JWT access token and join a user-specific room.
+Sockets authenticate with the same JWT access token used by REST requests.
 
-## 6. Deployment Setup
+## 7. Local Run
 
-### Local development
+### Option A: standard local run
 
-1. Copy `server/.env.example` to `server/.env`
-2. Copy `client/.env.example` to `client/.env`
-3. Install dependencies in `server` and `client`
-4. Start MongoDB locally or use Atlas
-5. Run `npm run dev` in both apps
-
-### Docker
+1. Copy [server/.env.example](./server/.env.example) to `server/.env`
+2. Copy [client/.env.example](./client/.env.example) to `client/.env`
+3. Install dependencies:
 
 ```bash
-docker-compose up --build
+cd server
+npm install
+cd ../client
+npm install
 ```
 
-### Vercel frontend
-
-- Root directory: `client`
-- Build command: `npm run build`
-- Output directory: `dist`
-- Env vars: `VITE_API_URL`, `VITE_SOCKET_URL`
-
-### Render backend
-
-- Root directory: `server`
-- Build command: `npm install`
-- Start command: `npm start`
-- Use `render.yaml`
-
-### MongoDB Atlas
-
-- Create cluster
-- Add IP allowlist for deployment platforms
-- Create application database user
-- Set `MONGODB_URI` in Render/server env
-
-## 7. Seed Data
-
-Run:
+4. Start MongoDB locally, or use Atlas
+5. Seed demo data:
 
 ```bash
 cd server
 npm run seed
 ```
 
-Seed operative:
+6. Run backend:
+
+```bash
+cd server
+npm run dev
+```
+
+7. Run frontend in another terminal:
+
+```bash
+cd client
+npm run dev
+```
+
+8. Open `http://localhost:5173`
+
+### Option B: Docker
+
+```bash
+docker-compose up --build
+```
+
+## 8. Demo Credentials
+
 - Email: `paul@arrakis.ai`
 - Password: `Arrakis@123`
 
-## Request / Response Examples
+## 9. Deployment
 
-Register:
+### Frontend -> Vercel
+- Root: `client`
+- Build command: `npm run build`
+- Output: `dist`
+- Config: [client/vercel.json](./client/vercel.json)
 
-```json
-{
-  "name": "Jessica",
-  "email": "jessica@arrakis.ai",
-  "password": "Arrakis@123",
-  "targetRole": "AI Systems Engineer"
-}
-```
+### Backend -> Render
+- Root: `server`
+- Build command: `npm install`
+- Start command: `npm start`
+- Config: [render.yaml](./render.yaml)
 
-Harvest spice:
+### Database -> MongoDB Atlas
+- Create cluster
+- Create database user
+- Add IP allowlist
+- Set `MONGODB_URI` in Render/server env
 
-```json
-{
-  "duration": 50,
-  "type": "deep-50",
-  "productivityScore": 88,
-  "notes": "Architecture sprint"
-}
-```
+## 10. API Reference
 
-Storm log response shape:
+See:
+- [server/docs/api.md](./server/docs/api.md)
+- [server/docs/architecture.md](./server/docs/architecture.md)
 
-```json
-{
-  "success": true,
-  "data": {
-    "stormState": {
-      "stormModeActive": true,
-      "escalationLevel": "high",
-      "totalMinutes": 135,
-      "thresholdMinutes": 120,
-      "pressureIndex": 113
-    }
-  }
-}
-```
-
-## Architecture Diagram
-
-```text
-                   +------------------------------+
-                   |    React Command Surface     |
-                   |  Login / Dashboard / Charts  |
-                   +--------------+---------------+
-                                  |
-                       HTTPS + Socket.io
-                                  |
-                 +----------------+----------------+
-                 |          Express API             |
-                 | auth, skills, spice, storm, ai   |
-                 +--------+-------------+-----------+
-                          |             |
-              +-----------+---+   +-----+------------------+
-              | Dune Engines  |   | Services + Repos       |
-              | spice storm   |   | auth analytics focus   |
-              | rank skills   |   | prescience oauth       |
-              +-----------+---+   +-----+------------------+
-                          |             |
-                          +------+------+ 
-                                 |
-                           MongoDB Atlas
-```
+Primary endpoints:
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `GET /api/v1/auth/me`
+- `POST /api/v1/spice/harvest`
+- `POST /api/v1/storm/log`
+- `POST /api/v1/skills/analyze`
+- `GET /api/v1/analytics/dashboard`
+- `GET /api/v1/prescience/analyze`
+- `GET /api/v1/roadmap/current`
+- `POST /api/v1/roadmap/phases/:phaseId/complete`

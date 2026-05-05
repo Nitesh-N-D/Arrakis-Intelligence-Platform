@@ -7,7 +7,7 @@ const userRepository = new UserRepository();
 const tokenService = new TokenService();
 
 export class AuthService {
-  async register(payload, meta) {
+  async register(payload, meta = {}) {
     const existingUser = await userRepository.findByEmail(payload.email);
     if (existingUser) {
       throw new ApiError(409, "A user with this email already exists");
@@ -17,23 +17,24 @@ export class AuthService {
     const user = await userRepository.create({
       name: payload.name,
       email: payload.email,
+      provider: "local",
       passwordHash,
-      skills: payload.skills || [],
-      targetRole: payload.targetRole || "AI Systems Engineer"
+      targetRole: payload.targetRole || "AI Systems Engineer",
+      skills: payload.skills || []
     });
 
     const tokens = await tokenService.issueTokens(user, meta);
     return { user, ...tokens };
   }
 
-  async login(payload, meta) {
+  async login(payload, meta = {}) {
     const user = await userRepository.findByEmail(payload.email);
     if (!user || !user.passwordHash) {
       throw new ApiError(401, "Invalid credentials");
     }
 
-    const validPassword = await comparePassword(payload.password, user.passwordHash);
-    if (!validPassword) {
+    const passwordValid = await comparePassword(payload.password, user.passwordHash);
+    if (!passwordValid) {
       throw new ApiError(401, "Invalid credentials");
     }
 
@@ -41,7 +42,7 @@ export class AuthService {
     return { user, ...tokens };
   }
 
-  refresh(refreshToken, meta) {
+  refresh(refreshToken, meta = {}) {
     return tokenService.rotateRefreshToken(refreshToken, meta);
   }
 

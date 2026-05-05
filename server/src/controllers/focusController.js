@@ -1,9 +1,11 @@
-import { getIo } from "../socket/index.js";
 import { AnalyticsService } from "../services/analyticsService.js";
 import { FocusService } from "../services/focusService.js";
+import { LeaderboardService } from "../services/leaderboardService.js";
+import { getIo } from "../socket/index.js";
 
 const focusService = new FocusService();
 const analyticsService = new AnalyticsService();
+const leaderboardService = new LeaderboardService();
 
 export class FocusController {
   async create(req, res) {
@@ -16,14 +18,14 @@ export class FocusController {
         currentRank: result.updatedUser.currentRank,
         session: result.session
       });
-      io.to(`user:${req.user.id}`).emit("rank:update", {
-        currentRank: result.updatedUser.currentRank,
-        totalSpice: result.updatedUser.totalSpice
+      io.to(`user:${req.user.id}`).emit("streak:update", {
+        focusStreak: result.updatedUser.focusStreak
       });
       io.to(`user:${req.user.id}`).emit(
         "analytics:update",
         await analyticsService.getDashboard(result.updatedUser)
       );
+      await leaderboardService.emitUpdate(io);
     }
 
     res.status(201).json({
@@ -33,8 +35,10 @@ export class FocusController {
         operative: {
           totalSpice: result.updatedUser.totalSpice,
           currentRank: result.updatedUser.currentRank,
-          focusStreak: result.updatedUser.focusStreak
-        }
+          focusStreak: result.updatedUser.focusStreak,
+          team: result.updatedTeam
+        },
+        leaderboard: await leaderboardService.getSummary()
       }
     });
   }
