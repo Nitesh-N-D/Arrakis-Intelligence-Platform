@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthShell from "../components/ui/AuthShell";
 import Button from "../components/ui/Button";
@@ -17,6 +18,10 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    document.title = "Register | Arrakis Intelligence Platform";
+  }, []);
 
   const submit = async (event) => {
     event.preventDefault();

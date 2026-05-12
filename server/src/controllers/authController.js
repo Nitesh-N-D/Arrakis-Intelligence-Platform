@@ -5,6 +5,11 @@ import { TokenService } from "../services/tokenService.js";
 import { env } from "../config/env.js";
 import { isGoogleOAuthConfigured } from "../config/passport.js";
 import { ApiError } from "../utils/ApiError.js";
+import {
+  clearRefreshTokenCookie,
+  getRefreshTokenFromRequest,
+  setRefreshTokenCookie
+} from "../utils/cookies.js";
 
 const authService = new AuthService();
 const userRepository = new UserRepository();
@@ -32,6 +37,11 @@ const serializeUser = (user) => ({
   focusStreak: user.focusStreak,
   stormModeActive: user.stormModeActive,
   skills: user.skills,
+  organizationId: user.organizationId,
+  teamRole: user.teamRole,
+  billing: user.billing,
+  onboarding: user.onboarding,
+  preferences: user.preferences,
   team: user.team
     ? {
         id: user.team.id || user.team,
@@ -48,6 +58,7 @@ export class AuthController {
       userAgent: req.headers["user-agent"],
       ipAddress: req.ip
     });
+    setRefreshTokenCookie(res, result.refreshToken);
 
     res.status(201).json({
       success: true,
@@ -64,6 +75,7 @@ export class AuthController {
       userAgent: req.headers["user-agent"],
       ipAddress: req.ip
     });
+    setRefreshTokenCookie(res, result.refreshToken);
 
     res.json({
       success: true,
@@ -76,16 +88,19 @@ export class AuthController {
   }
 
   async refresh(req, res) {
-    const tokens = await authService.refresh(req.body.refreshToken, {
+    const refreshToken = getRefreshTokenFromRequest(req);
+    const tokens = await authService.refresh(refreshToken, {
       userAgent: req.headers["user-agent"],
       ipAddress: req.ip
     });
+    setRefreshTokenCookie(res, tokens.refreshToken);
 
     res.json({ success: true, data: tokens });
   }
 
   async logout(req, res) {
-    await authService.logout(req.body.refreshToken);
+    await authService.logout(getRefreshTokenFromRequest(req));
+    clearRefreshTokenCookie(res);
     res.json({ success: true, message: "Logged out successfully" });
   }
 
@@ -118,10 +133,10 @@ export class AuthController {
       userAgent: req.headers["user-agent"],
       ipAddress: req.ip
     });
+    setRefreshTokenCookie(res, tokens.refreshToken);
 
     const redirectUrl = appendQuery(env.googleSuccessRedirectUrl, {
       accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
       provider: "google"
     });
 

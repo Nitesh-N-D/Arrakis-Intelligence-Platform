@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AuthShell from "../components/ui/AuthShell";
 import Button from "../components/ui/Button";
@@ -13,6 +14,10 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: "paul@arrakis.ai", password: "Arrakis@123" });
   const [error, setError] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    document.title = "Login | Arrakis Intelligence Platform";
+  }, []);
 
   const googleError = useMemo(() => {
     const value = searchParams.get("error");

@@ -1,152 +1,97 @@
 # Arrakis Intelligence Platform
 
-Arrakis Intelligence Platform is a production-oriented behavioral intelligence SaaS system built to measure discipline, track focus, detect distraction pressure, guide skill growth, predict burnout, and enforce long-term progression.
+Arrakis Intelligence Platform is a startup-grade behavioral intelligence SaaS ecosystem built to measure discipline, detect distraction patterns, guide skill mastery, predict burnout risk, and operationalize progression with realtime feedback.
 
-## 1. Architecture
+## Platform Summary
 
-```text
-client (React + Vite + Tailwind + Framer Motion + Recharts)
-  -> REST + Socket.io
-server (Express clean architecture)
-  -> controllers
-  -> services
-  -> repositories
-  -> models
-  -> middleware
-  -> dune domain engines
-mongodb (MongoDB / Atlas)
-```
+- `client/`: React + Vite + Tailwind + Framer Motion + Recharts
+- `server/`: Express clean architecture with MongoDB, JWT auth, Google OAuth, Socket.io, Mentat, and Stripe-ready billing
+- `extension/`: Chrome Extension (Manifest V3) for distraction tracking and hard-block enforcement
 
-Core domain engines:
-- `SpiceEngine`: fixed focus-to-spice conversion.
-- `StormEngine`: daily distraction aggregation into CALM, DUST, SANDSTORM, and SPICE STORM.
-- `SkillAnalyzerService`: weighted discipline map and ordered learning priority.
-- `RoadmapService`: persisted multi-phase ascension roadmap with auto-advance.
-- `PrescienceService`: burnout-risk prediction and behavioral guidance.
+## Core Systems
 
-## 2. Database Schema
+- `Spice Engine`: 25-minute harvests earn 10 spice, 50-minute harvests earn 25 spice
+- `Storm Engine`: logs distractions, calculates `CALM`, `DUST`, `SANDSTORM`, and `SPICE STORM`
+- `Streak Engine`: updates consecutive active days automatically on session completion
+- `Skill Intelligence`: compares user skills against role matrices with weighted priorities
+- `Ascension System`: persists roadmap phases and auto-activates the next phase when one is completed
+- `Prescience Engine`: computes burnout risk, averages, and interventions
+- `Mentat`: AI-assisted behavior guidance with heuristic fallback and optional OpenAI provider
+- `Leaderboard`: live user and team rankings by spice and streak
+- `Billing Layer`: Stripe-ready plan model with `free` and `pro` entitlements
 
-### User
-- Identity and auth fields
-- Role and OAuth provider
-- Skills array with levels
-- Target role
-- Total spice
-- Current rank
-- Focus streak
-- Last active date
-- Storm mode state
-
-### FocusSession
-- Duration
-- Session type
-- Spice earned
-- Timestamps
-- Productivity score
-
-### DistractionLog
-- App/source name
-- Duration
-- Severity
-- Logged time
-
-### RefreshToken
-- User reference
-- Token lifecycle metadata
-
-### RoadmapPlan
-- Persisted roadmap per user
-- Ordered phases
-- Phase status (`locked`, `active`, `done`, `skipped`)
-- Tasks and duration
-
-## 3. Backend
-
-Server layout:
+## Architecture
 
 ```text
-server/
-  src/
-    config/
-    controllers/
-    services/
-    repositories/
-    models/
-    middleware/
-    routes/
-    socket/
-    dune/
-    utils/
-    seed/
-  docs/
+Browser / Extension
+  |
+  +-- React dashboard
+  +-- Chrome blocker / tracker
+  |
+  +-- REST + Socket.io
+       |
+       v
+  Express API
+    +-- controllers
+    +-- middleware
+    +-- services
+    +-- repositories
+    +-- models
+    +-- socket
+    +-- dune domain engines
+       |
+       v
+  MongoDB / Atlas
+
+External Integrations
+  +-- Google OAuth
+  +-- Stripe Billing
+  +-- OpenAI Responses API (optional Mentat provider)
 ```
 
-Implemented capabilities:
-- JWT auth with refresh tokens
-- Google OAuth-ready structure
-- Protected routes middleware
-- Focus harvest storage and streak calculation
-- Real storm logging and level calculation
-- Realtime `spice:update`, `storm:update`, and `streak:update`
-- Skill-gap analysis with weighted scoring
-- Persisted roadmap progression
-- Dashboard and prescience analytics
+See [server/docs/architecture.md](./server/docs/architecture.md) for the expanded breakdown.
 
-## 4. Frontend
+## Auth and Security
 
-Client layout:
+- JWT access tokens for API and socket auth
+- refresh token rotation with secure `httpOnly` cookie support
+- hashed refresh tokens at rest
+- Google OAuth with Passport
+- Helmet enabled
+- in-memory rate limiting for global and auth-sensitive paths
+- CORS restricted to configured app origins
+- production env validation for critical secrets
 
-```text
-client/
-  src/
-    components/
-    pages/
-    hooks/
-    services/
-    context/
-```
+## Product Surface
 
-Implemented capabilities:
-- Login and registration
-- Live dashboard with glassmorphism UI
-- Real countdown timer with pause/resume/reset
-- Auto-harvest on timer completion
-- Spice meter and rank badge
-- Storm overlay
-- Recharts analytics
-- Prescience recommendation panel
-- Discipline map and roadmap completion flow
+- live dashboard with glassmorphism UI
+- real countdown timer with pause, resume, reset, and auto-harvest
+- Storm overlay with audio alarm behavior while distraction pressure is active
+- Mentat panel for next-best-action guidance
+- pricing page with Free vs Pro positioning and checkout / portal hooks
+- onboarding checklist and user-facing empty or retry states
+- mobile navigation shell with sidebar and command menu
+- SEO metadata, manifest, robots, and sitemap assets
 
-## 5. Timer System
+## Local Development
 
-Exact focus rules:
-- `25 minutes -> 10 spice`
-- `50 minutes -> 25 spice`
+### 1. Configure environment
 
-Timer behavior:
-- Start on `Harvest 25` or `Harvest 50`
-- Buttons lock during active session
-- Pause and resume supported
-- Completion auto-calls `/spice/harvest`
-- UI updates via REST refresh and Socket.io events
+Copy:
 
-## 6. Realtime
+- [server/.env.example](./server/.env.example) -> `server/.env`
+- [client/.env.example](./client/.env.example) -> `client/.env`
 
-Socket events:
-- `spice:update`
-- `storm:update`
-- `streak:update`
-- `analytics:update`
+Key values:
 
-Sockets authenticate with the same JWT access token used by REST requests.
+- `MONGODB_URI`
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- optional: `OPENAI_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_PRICE_PRO_MONTHLY`
 
-## 7. Local Run
-
-### Option A: standard local run
-
-1. Copy [server/.env.example](./server/.env.example) to `server/.env`
-2. Copy [client/.env.example](./client/.env.example) to `client/.env`
-3. Install dependencies:
+### 2. Install dependencies
 
 ```bash
 cd server
@@ -155,75 +100,102 @@ cd ../client
 npm install
 ```
 
-4. Start MongoDB locally, or use Atlas
-5. Seed demo data:
+### 3. Seed sample data
 
 ```bash
 cd server
 npm run seed
 ```
 
-6. Run backend:
+### 4. Run locally
+
+Backend:
 
 ```bash
 cd server
 npm run dev
 ```
 
-7. Run frontend in another terminal:
+Frontend:
 
 ```bash
 cd client
 npm run dev
 ```
 
-8. Open `http://localhost:5173`
+Open `http://localhost:5173`.
 
-### Option B: Docker
+## Demo Credentials
+
+- Email: `paul@arrakis.ai`
+- Password: `Arrakis@123`
+
+## Docker
 
 ```bash
 docker-compose up --build
 ```
 
-## 8. Demo Credentials
+## Deployment
 
-- Email: `paul@arrakis.ai`
-- Password: `Arrakis@123`
+- Frontend: Vercel using [client/vercel.json](./client/vercel.json)
+- Backend: Render using [render.yaml](./render.yaml)
+- Database: MongoDB Atlas
 
-## 9. Deployment
+Guides:
 
-### Frontend -> Vercel
-- Root: `client`
-- Build command: `npm run build`
-- Output: `dist`
-- Config: [client/vercel.json](./client/vercel.json)
+- [docs/setup-guide.md](./docs/setup-guide.md)
+- [docs/deployment-guide.md](./docs/deployment-guide.md)
+- [docs/production-guide.md](./docs/production-guide.md)
+- [docs/extension-setup-guide.md](./docs/extension-setup-guide.md)
 
-### Backend -> Render
-- Root: `server`
-- Build command: `npm install`
-- Start command: `npm start`
-- Config: [render.yaml](./render.yaml)
+## Extension
 
-### Database -> MongoDB Atlas
-- Create cluster
-- Create database user
-- Add IP allowlist
-- Set `MONGODB_URI` in Render/server env
+The Chrome extension:
 
-## 10. API Reference
+- tracks visible active-site time every 10 seconds
+- buffers activity and flushes storm logs in minute increments
+- maintains blocked site policies
+- supports strict mode hard blocking
+- supports timed overrides when strict mode is disabled
+
+See [extension/README.md](./extension/README.md).
+
+## API Reference
 
 See:
+
 - [server/docs/api.md](./server/docs/api.md)
 - [server/docs/architecture.md](./server/docs/architecture.md)
 
-Primary endpoints:
+Primary routes:
+
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
-- `GET /api/v1/auth/me`
+- `POST /api/v1/auth/refresh`
+- `GET /api/v1/auth/google`
 - `POST /api/v1/spice/harvest`
 - `POST /api/v1/storm/log`
-- `POST /api/v1/skills/analyze`
 - `GET /api/v1/analytics/dashboard`
 - `GET /api/v1/prescience/analyze`
-- `GET /api/v1/roadmap/current`
-- `POST /api/v1/roadmap/phases/:phaseId/complete`
+- `POST /api/v1/mentat/analyze`
+- `GET /api/v1/billing/plans`
+- `POST /api/v1/billing/checkout-session`
+- `POST /api/v1/billing/customer-portal`
+
+## Current Entitlement Model
+
+- `free`: focus tracking, storm logging, leaderboard, baseline analytics, concise Mentat insight
+- `pro`: full Mentat guidance, strict blocker posture, richer analytics, billing portal support
+
+## QA Status
+
+Validation targets in this repo:
+
+- backend import check
+- frontend production build
+- OAuth callback flow
+- realtime updates for spice, storm, streak, and leaderboard
+- extension tracking and strict-mode blocking
+
+If you change core contracts, rerun those checks before deployment.

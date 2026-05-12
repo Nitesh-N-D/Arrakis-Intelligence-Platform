@@ -11,11 +11,10 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const accessToken = searchParams.get("accessToken");
-    const refreshToken = searchParams.get("refreshToken");
 
-    if (accessToken && refreshToken) {
+    if (accessToken) {
       setAccessToken(accessToken);
-      setRefreshToken(refreshToken);
+      setRefreshToken(null);
       navigate("/", { replace: true });
       return;
     }

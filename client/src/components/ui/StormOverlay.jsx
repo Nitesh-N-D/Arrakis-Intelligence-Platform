@@ -38,6 +38,9 @@ export default function StormOverlay({ level = "CALM" }) {
             <div className="text-xs uppercase tracking-[0.35em] text-orange-100/70">Storm Mode</div>
             <div className="mt-2 text-lg font-semibold text-orange-50">{level}</div>
             <div className="mt-1 text-sm text-orange-100/72">{stormDescriptions[level]}</div>
+            <div className="mt-2 text-xs uppercase tracking-[0.28em] text-orange-100/60">
+              Alarm engaged until pressure returns to calm
+            </div>
           </motion.div>
         </motion.div>
       ) : null}

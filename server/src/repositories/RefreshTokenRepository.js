@@ -5,11 +5,15 @@ export class RefreshTokenRepository {
     return RefreshToken.create(data);
   }
 
-  findValidToken(token) {
-    return RefreshToken.findOne({ token, revokedAt: null }).populate("user");
+  findValidToken(tokenHash) {
+    return RefreshToken.findOne({ tokenHash, revokedAt: null }).populate("user");
   }
 
-  revokeToken(token) {
-    return RefreshToken.findOneAndUpdate({ token }, { revokedAt: new Date() }, { new: true });
+  revokeToken(tokenHash) {
+    return RefreshToken.findOneAndUpdate(
+      { tokenHash },
+      { revokedAt: new Date() },
+      { new: true }
+    );
   }
 }

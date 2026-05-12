@@ -94,6 +94,19 @@ body {
   line-height: 1.45;
 }
 
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0 10px;
+  color: var(--text);
+}
+
+.compact-label {
+  margin-top: 4px;
+}
+
 .text-input,
 .text-area {
   width: 100%;
@@ -103,6 +116,12 @@ body {
   color: var(--text);
   padding: 12px 13px;
   outline: none;
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #f59e0b;
 }
 
 .text-input:focus,

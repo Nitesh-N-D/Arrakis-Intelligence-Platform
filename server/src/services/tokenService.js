@@ -1,6 +1,7 @@
 import { env } from "../config/env.js";
 import { RefreshTokenRepository } from "../repositories/RefreshTokenRepository.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
+import { hashOpaqueToken } from "../utils/tokens.js";
 
 const refreshTokenRepository = new RefreshTokenRepository();
 
@@ -17,10 +18,11 @@ export class TokenService {
   async issueTokens(user, meta = {}) {
     const accessToken = signAccessToken({ sub: user.id, role: user.role });
     const refreshToken = signRefreshToken({ sub: user.id });
+    const tokenHash = hashOpaqueToken(refreshToken);
 
     await refreshTokenRepository.create({
       user: user.id,
-      token: refreshToken,
+      tokenHash,
       expiresAt: new Date(Date.now() + parseDuration(env.jwtRefreshExpiresIn)),
       userAgent: meta.userAgent || "",
       ipAddress: meta.ipAddress || ""
@@ -31,17 +33,18 @@ export class TokenService {
 
   async rotateRefreshToken(token, meta = {}) {
     verifyRefreshToken(token);
-    const record = await refreshTokenRepository.findValidToken(token);
+    const tokenHash = hashOpaqueToken(token);
+    const record = await refreshTokenRepository.findValidToken(tokenHash);
 
     if (!record || record.expiresAt < new Date()) {
       throw new Error("Refresh token is invalid");
     }
 
-    await refreshTokenRepository.revokeToken(token);
+    await refreshTokenRepository.revokeToken(tokenHash);
     return this.issueTokens(record.user, meta);
   }
 
   revokeRefreshToken(token) {
-    return refreshTokenRepository.revokeToken(token);
+    return refreshTokenRepository.revokeToken(hashOpaqueToken(token));
   }
 }

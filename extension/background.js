@@ -2,6 +2,8 @@ const DEFAULT_SETTINGS = {
   backendUrl: "http://localhost:5000/api/v1",
   jwtToken: "",
   blockedSites: [],
+  strictMode: false,
+  overrideMinutes: 5,
   activityBuffer: {},
   temporaryOverrides: {},
   lastDeliveryStatus: {
@@ -12,7 +14,6 @@ const DEFAULT_SETTINGS = {
 };
 
 const HEARTBEAT_SECONDS = 10;
-const BLOCK_OVERRIDE_MS = 5 * 60 * 1000;
 
 chrome.runtime.onInstalled.addListener(async () => {
   await initializeDefaults();
@@ -351,6 +352,7 @@ async function postStormLog(settings, host, entry, minutesToFlush) {
 }
 
 async function handleOverrideBlock(payload, sender) {
+  const settings = await getSettings();
   const host = normalizePattern(payload?.host);
   const originalUrl = payload?.originalUrl;
 
@@ -358,9 +360,16 @@ async function handleOverrideBlock(payload, sender) {
     return { ok: false, error: "Host and original URL are required" };
   }
 
-  const { temporaryOverrides = {} } = await chrome.storage.local.get("temporaryOverrides");
+  if (settings.strictMode) {
+    return {
+      ok: false,
+      error: "Strict mode is enabled. Overrides are not permitted for this storm zone."
+    };
+  }
 
-  temporaryOverrides[host] = Date.now() + BLOCK_OVERRIDE_MS;
+  const { temporaryOverrides = {} } = await chrome.storage.local.get("temporaryOverrides");
+  const overrideMinutes = Math.max(1, Number(settings.overrideMinutes) || 5);
+  temporaryOverrides[host] = Date.now() + overrideMinutes * 60 * 1000;
 
   await chrome.storage.local.set({ temporaryOverrides });
 

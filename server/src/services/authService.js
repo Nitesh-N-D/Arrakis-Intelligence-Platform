@@ -43,6 +43,9 @@ export class AuthService {
   }
 
   refresh(refreshToken, meta = {}) {
+    if (!refreshToken) {
+      throw new ApiError(401, "Refresh token is required");
+    }
     return tokenService.rotateRefreshToken(refreshToken, meta);
   }
 

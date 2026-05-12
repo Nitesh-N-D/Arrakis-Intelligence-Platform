@@ -41,6 +41,25 @@ export class AnalyticsService {
             focusTrend.reduce((sum, day) => sum + day.averageProductivity, 0) / focusTrend.length
           )
         : 0;
+    const totalFocusMinutes = focusTrend.reduce((sum, day) => sum + day.totalMinutes, 0);
+    const totalDistractionMinutes = distractionTrend.reduce((sum, day) => sum + day.totalMinutes, 0);
+    const focusEfficiency =
+      totalFocusMinutes > 0
+        ? Math.round((totalFocusMinutes / Math.max(totalFocusMinutes + totalDistractionMinutes, 1)) * 100)
+        : 0;
+    const distractionRatio =
+      totalFocusMinutes + totalDistractionMinutes > 0
+        ? Number(
+            (
+              totalDistractionMinutes /
+              Math.max(totalFocusMinutes + totalDistractionMinutes, 1)
+            ).toFixed(2)
+          )
+        : 0;
+    const productivityScore = Math.max(
+      0,
+      Math.min(100, Math.round(weeklyProductivityScore * 0.7 + focusEfficiency * 0.3))
+    );
 
     return {
       operative: {
@@ -71,6 +90,13 @@ export class AnalyticsService {
         skillAnalysis,
         stormState,
         weeklyProductivityScore,
+        performanceSignals: {
+          productivityScore,
+          focusEfficiency,
+          distractionRatio,
+          totalFocusMinutes,
+          totalDistractionMinutes
+        },
         roadmap,
         leaderboard
       }

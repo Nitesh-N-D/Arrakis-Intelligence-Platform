@@ -1,6 +1,16 @@
-# Arrakis Intelligence Platform API
+# Arrakis API
 
 Base URL: `http://localhost:5000/api/v1`
+
+## Error Shape
+
+```json
+{
+  "success": false,
+  "message": "Human readable message",
+  "details": null
+}
+```
 
 ## Auth
 
@@ -19,6 +29,12 @@ Base URL: `http://localhost:5000/api/v1`
 }
 ```
 
+Response:
+
+- access token in JSON
+- refresh token in JSON for compatibility
+- refresh token cookie set as `httpOnly`
+
 ### `POST /auth/login`
 
 ```json
@@ -30,23 +46,21 @@ Base URL: `http://localhost:5000/api/v1`
 
 ### `POST /auth/refresh`
 
-```json
-{
-  "refreshToken": "jwt-refresh-token"
-}
-```
+Uses refresh cookie automatically. Body token is still accepted for compatibility.
+
+### `POST /auth/logout`
+
+Clears refresh cookie and revokes the stored refresh token.
 
 ### `GET /auth/google`
 
-Starts Google OAuth through Passport and redirects the user to Google.
+Starts Google OAuth.
 
 ### `GET /auth/google/callback`
 
-Completes Google OAuth, issues JWT + refresh token, and redirects to the frontend callback URL:
+Completes Google OAuth, sets the refresh cookie, and redirects the frontend with an access token.
 
-`/auth/callback?accessToken=...&refreshToken=...&provider=google`
-
-## Spice / Focus
+## Focus / Spice
 
 ### `POST /spice/harvest`
 
@@ -58,23 +72,10 @@ Completes Google OAuth, issues JWT + refresh token, and redirects to the fronten
 }
 ```
 
-Response highlights:
+Rules:
 
-```json
-{
-  "success": true,
-  "data": {
-    "session": {
-      "duration": 25,
-      "spiceEarned": 10
-    },
-    "operative": {
-      "totalSpice": 120,
-      "focusStreak": 5
-    }
-  }
-}
-```
+- `25 -> 10 spice`
+- `50 -> 25 spice`
 
 ## Storm
 
@@ -85,19 +86,18 @@ Response highlights:
   "appName": "YouTube",
   "duration": 45,
   "severity": "high",
-  "site": "youtube.com",
-  "url": "https://youtube.com/watch?v=abc123",
-  "source": "extension",
   "metadata": {
     "device": "desktop",
     "category": "video",
+    "source": "extension",
     "pageTitle": "Live stream",
-    "source": "extension"
+    "pageUrl": "https://youtube.com/watch?v=abc123"
   }
 }
 ```
 
-Storm levels:
+Storm bands:
+
 - `0-59`: `CALM`
 - `60-119`: `DUST`
 - `120-179`: `SANDSTORM`
@@ -118,44 +118,52 @@ Storm levels:
 }
 ```
 
-Returns:
-- weighted completion
-- missing skills
-- ordered `disciplineMap`
-
-## Roadmap
-
-### `GET /roadmap/current`
-
-Returns the persisted ascension roadmap for the authenticated operative.
-
-### `POST /roadmap/phases/:phaseId/complete`
-
-Marks the current phase as complete, upgrades the underlying skill, and activates the next phase automatically.
+Returns weighted completion, missing skills, and an ordered `disciplineMap`.
 
 ## Analytics
 
 ### `GET /analytics/dashboard`
 
 Returns:
-- operative summary
-- focus session count
-- distraction event count
-- spice harvest trend
-- storm pressure trend
-- discipline map
-- roadmap state
+
+- operative profile
+- focus and distraction counts
+- spice and storm trend series
+- performance signals
+- skill analysis
+- roadmap
 - leaderboard summary
+
+## Prescience
+
+### `GET /prescience/analyze`
+
+Returns:
+
+- `burnoutRisk`
+- `riskBand`
+- averages
+- recommendations
+
+## Roadmap
+
+### `GET /roadmap/current`
+
+Returns the current persisted roadmap.
+
+### `POST /roadmap/phases/:phaseId/complete`
+
+Completes the phase, upgrades the skill, and activates the next available phase.
 
 ## Leaderboard
 
 ### `GET /leaderboard/users`
 
-Returns the top operatives ranked by `totalSpice`, with `focusStreak`, `currentRank`, and `team`.
+Top users by spice and streak.
 
 ### `GET /leaderboard/teams`
 
-Returns the top teams ranked by `totalSpice`, with aggregated streak and member count.
+Top teams by spice and aggregated streak.
 
 ## Teams
 
@@ -171,24 +179,66 @@ Returns the top teams ranked by `totalSpice`, with aggregated streak and member 
 
 ```json
 {
-  "teamId": "6818f0bcbf0a1f2f0a1f2f0a"
-}
-```
-
-You can also join by name:
-
-```json
-{
   "name": "Fremen Vanguard"
 }
 ```
 
-## Prescience
+## Mentat
 
-### `GET /prescience/analyze`
+### `POST /mentat/analyze`
 
-Returns:
-- `burnoutRisk`
-- `riskBand`
-- focus/distraction/streak averages
-- recommendations
+```json
+{
+  "question": "What should I optimize tomorrow morning?"
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "provider": "heuristic",
+    "summary": "Mentat sees a recoverable rhythm...",
+    "dailyRecommendations": [
+      "Protect the next morning with a guaranteed 25-minute harvest."
+    ],
+    "warnings": [],
+    "nextBestAction": "Complete one roadmap task and finish one harvest.",
+    "focusSchedule": {
+      "recommendedStartHour": "09:00",
+      "recommendedPrimarySession": 25,
+      "recommendedRecoveryWindow": "Use a 5-minute reset between harvests."
+    }
+  }
+}
+```
+
+## Billing
+
+### `GET /billing/plans`
+
+Returns the Free and Pro plans exposed to the frontend.
+
+### `GET /billing/status`
+
+Returns the authenticated user billing state.
+
+### `POST /billing/checkout-session`
+
+Creates a Stripe Checkout Session for the Pro subscription.
+
+### `POST /billing/customer-portal`
+
+Creates a Stripe Billing Portal session.
+
+### `POST /billing/webhook`
+
+Consumes Stripe webhook events.
+
+Notes:
+
+- the route expects the raw request body
+- signature verification uses `STRIPE_WEBHOOK_SECRET`
+- supported events update the local user billing plan and subscription state

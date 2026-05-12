@@ -12,6 +12,8 @@ const DEFAULTS = {
 const backendUrlInput = document.getElementById("backend-url");
 const jwtTokenInput = document.getElementById("jwt-token");
 const blockedSitesInput = document.getElementById("blocked-sites");
+const strictModeInput = document.getElementById("strict-mode");
+const overrideMinutesInput = document.getElementById("override-minutes");
 const activeSiteLabel = document.getElementById("active-site");
 const statusMessage = document.getElementById("status-message");
 const statusTime = document.getElementById("status-time");
@@ -38,11 +40,15 @@ saveButton.addEventListener("click", async () => {
   const uniqueBlockedSites = [...new Set(blockedSites)];
   const backendUrl = normalizeBackendUrl(backendUrlInput.value);
   const jwtToken = jwtTokenInput.value.trim();
+  const strictMode = strictModeInput.checked;
+  const overrideMinutes = Math.max(1, Number(overrideMinutesInput.value) || 5);
 
   await chrome.storage.local.set({
     backendUrl,
     jwtToken,
-    blockedSites: uniqueBlockedSites
+    blockedSites: uniqueBlockedSites,
+    strictMode,
+    overrideMinutes
   });
 
   blockedSitesInput.value = uniqueBlockedSites.join("\n");
@@ -83,6 +89,8 @@ async function initializePopup() {
   backendUrlInput.value = settings.backendUrl;
   jwtTokenInput.value = settings.jwtToken;
   blockedSitesInput.value = (settings.blockedSites || []).join("\n");
+  strictModeInput.checked = Boolean(settings.strictMode);
+  overrideMinutesInput.value = settings.overrideMinutes || 5;
   renderStatus(settings.lastDeliveryStatus || DEFAULTS.lastDeliveryStatus);
 
   const tabUrl = tab?.url || "";

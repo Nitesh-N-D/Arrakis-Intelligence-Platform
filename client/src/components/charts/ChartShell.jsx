@@ -10,7 +10,7 @@ export default function ChartShell({ eyebrow, title, description, children }) {
           <p className="mt-1 text-sm text-white/55">{description}</p>
         </div>
       </div>
-      <div className="mt-6 h-72">{children}</div>
+      <div className="mt-6 h-[18rem] sm:h-80">{children}</div>
     </Card>
   );
 }

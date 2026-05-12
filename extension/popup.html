@@ -42,6 +42,21 @@
         </div>
 
         <div class="glass-card">
+          <div class="inline-header">
+            <div>
+              <p class="field-label">Enforcement Policy</p>
+              <p class="field-help">Strict mode removes temporary bypass and acts as a hard block.</p>
+            </div>
+          </div>
+          <label class="toggle-row" for="strict-mode">
+            <span>Strict mode</span>
+            <input id="strict-mode" type="checkbox" />
+          </label>
+          <label class="field-label compact-label" for="override-minutes">Override window (minutes)</label>
+          <input id="override-minutes" class="text-input" type="number" min="1" max="60" placeholder="5" />
+        </div>
+
+        <div class="glass-card">
           <p class="field-label">Delivery Status</p>
           <p class="status-text" id="status-message">Loading extension state...</p>
           <p class="field-help" id="status-time"></p>
