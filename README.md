@@ -198,4 +198,4 @@ Validation targets in this repo:
 - realtime updates for spice, storm, streak, and leaderboard
 - extension tracking and strict-mode blocking
 
-If you change core contracts, rerun those checks before deployment.
+
