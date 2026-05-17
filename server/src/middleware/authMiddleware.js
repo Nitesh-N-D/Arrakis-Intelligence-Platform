@@ -21,9 +21,13 @@ export const protect = async (req, _res, next) => {
     }
 
     req.user = user;
-    next();
-  } catch (_error) {
-    next(new ApiError(401, "Invalid or expired token"));
+    return next();
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return next(error);
+    }
+
+    return next(new ApiError(401, "Invalid or expired token"));
   }
 };
 

@@ -1,4 +1,5 @@
 import { StripeService } from "../services/stripeService.js";
+import { ApiError } from "../utils/ApiError.js";
 
 const stripeService = new StripeService();
 
@@ -29,7 +30,14 @@ export class BillingController {
 
   async webhook(req, res) {
     stripeService.verifyWebhookSignature(req.rawBody, req.headers["stripe-signature"]);
-    const event = JSON.parse(req.rawBody || "{}");
+    let event;
+
+    try {
+      event = JSON.parse(req.rawBody || "{}");
+    } catch (_error) {
+      throw new ApiError(400, "Stripe webhook payload was not valid JSON");
+    }
+
     const result = await stripeService.handleWebhookEvent(event);
     res.json({ success: true, data: result });
   }

@@ -2,11 +2,22 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+const parseAllowedOrigins = () => {
+  const values = [
+    process.env.CLIENT_URL,
+    process.env.APP_URL,
+    ...(process.env.ALLOWED_ORIGINS || "").split(",")
+  ];
+
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+};
+
 export const env = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: Number(process.env.PORT || 5000),
   clientUrl: process.env.CLIENT_URL || "http://localhost:5173",
   appUrl: process.env.APP_URL || process.env.CLIENT_URL || "http://localhost:5173",
+  allowedOrigins: parseAllowedOrigins(),
   googleSuccessRedirectUrl:
     process.env.GOOGLE_SUCCESS_REDIRECT_URL || "http://localhost:5173/auth/callback",
   googleFailureRedirectUrl:

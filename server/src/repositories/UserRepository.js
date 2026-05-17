@@ -1,12 +1,17 @@
 import { User } from "../models/User.js";
 
+const teamPopulation = "name totalSpice totalStreak members";
+
 export class UserRepository {
   create(data) {
-    return User.create(data);
+    return User.create({
+      ...data,
+      email: String(data.email || "").trim().toLowerCase()
+    });
   }
 
   findByEmail(email) {
-    return User.findOne({ email: email.toLowerCase() });
+    return User.findOne({ email: String(email || "").trim().toLowerCase() });
   }
 
   findByGoogleId(googleId) {
@@ -14,19 +19,19 @@ export class UserRepository {
   }
 
   findById(id) {
-    return User.findById(id).populate("team", "name totalSpice totalStreak members");
+    return User.findById(id).populate("team", teamPopulation);
   }
 
   updateById(id, update) {
-    return User.findByIdAndUpdate(id, update, { new: true }).populate(
-      "team",
-      "name totalSpice totalStreak members"
-    );
+    return User.findByIdAndUpdate(id, update, {
+      new: true,
+      runValidators: true
+    }).populate("team", teamPopulation);
   }
 
   listTopUsers(limit = 10) {
     return User.find({})
-      .select("name email totalSpice focusStreak currentRank targetRole team")
+      .select("name email avatarUrl totalSpice focusStreak currentRank targetRole team")
       .populate("team", "name")
       .sort({ totalSpice: -1, focusStreak: -1, createdAt: 1 })
       .limit(limit);

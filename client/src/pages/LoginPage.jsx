@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useEffect } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import AuthShell from "../components/ui/AuthShell";
 import Button from "../components/ui/Button";
 import GoogleButton from "../components/ui/GoogleButton";
@@ -9,9 +9,10 @@ import { authService } from "../services/authService";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { setUser, setAccessToken, setRefreshToken } = useAuth();
-  const [form, setForm] = useState({ email: "paul@arrakis.ai", password: "Arrakis@123" });
+  const { setUser, setAccessToken } = useAuth();
+  const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -28,13 +29,13 @@ export default function LoginPage() {
 
   const submit = async (event) => {
     event.preventDefault();
+    setError("");
 
     try {
       const response = await authService.login(form);
       setUser(response.data.user);
       setAccessToken(response.data.accessToken);
-      setRefreshToken(response.data.refreshToken);
-      navigate("/");
+      navigate(location.state?.from?.pathname || "/", { replace: true });
     } catch (loginError) {
       setError(loginError.message || "Unable to login");
     }

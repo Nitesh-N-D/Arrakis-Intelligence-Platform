@@ -31,6 +31,8 @@ const serializeUser = (user) => ({
   name: user.name,
   email: user.email,
   role: user.role,
+  avatarUrl: user.avatarUrl || "",
+  bio: user.bio || "",
   totalSpice: user.totalSpice,
   currentRank: user.currentRank,
   targetRole: user.targetRole,
@@ -64,8 +66,7 @@ export class AuthController {
       success: true,
       data: {
         user: serializeUser(result.user),
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken
+        accessToken: result.accessToken
       }
     });
   }
@@ -81,8 +82,7 @@ export class AuthController {
       success: true,
       data: {
         user: serializeUser(result.user),
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken
+        accessToken: result.accessToken
       }
     });
   }
@@ -95,7 +95,7 @@ export class AuthController {
     });
     setRefreshTokenCookie(res, tokens.refreshToken);
 
-    res.json({ success: true, data: tokens });
+    res.json({ success: true, data: { accessToken: tokens.accessToken } });
   }
 
   async logout(req, res) {
@@ -115,7 +115,9 @@ export class AuthController {
       success: true,
       data: {
         enabled: isGoogleOAuthConfigured(),
-        url: isGoogleOAuthConfigured() ? `${env.googleRedirectUri.replace(/\/callback$/, "")}` : null
+        url: isGoogleOAuthConfigured()
+          ? `${env.googleRedirectUri.replace(/\/callback$/, "")}`
+          : null
       }
     });
   }
@@ -136,8 +138,8 @@ export class AuthController {
     setRefreshTokenCookie(res, tokens.refreshToken);
 
     const redirectUrl = appendQuery(env.googleSuccessRedirectUrl, {
-      accessToken: tokens.accessToken,
-      provider: "google"
+      provider: "google",
+      auth: "success"
     });
 
     res.redirect(redirectUrl);

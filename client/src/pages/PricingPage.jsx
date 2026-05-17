@@ -42,6 +42,11 @@ export default function PricingPage() {
   }, [accessToken, user?.billing]);
 
   const startCheckout = async () => {
+    if (!accessToken) {
+      navigate("/login");
+      return;
+    }
+
     setSubmitting("checkout");
     setError("");
     try {
@@ -59,6 +64,11 @@ export default function PricingPage() {
   };
 
   const openPortal = async () => {
+    if (!accessToken) {
+      navigate("/login");
+      return;
+    }
+
     setSubmitting("portal");
     setError("");
     try {
@@ -92,7 +102,7 @@ export default function PricingPage() {
               Free gives you the core discipline system. Pro unlocks Mentat, strict blocking, and the full analytics surface.
             </p>
           </div>
-          <Button onClick={() => navigate("/") } variant="ghost">
+          <Button onClick={() => navigate("/")} variant="ghost">
             Back to dashboard
           </Button>
         </div>

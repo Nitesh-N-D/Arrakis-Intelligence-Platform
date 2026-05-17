@@ -15,14 +15,29 @@ const app = express();
 const billingController = new BillingController();
 
 configurePassport();
+app.set("trust proxy", 1);
 
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (env.allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Origin ${origin} is not allowed by CORS`));
+  },
+  credentials: true
+};
+
+app.use(cors(corsOptions));
 app.use(
-  cors({
-    origin: [env.clientUrl, env.appUrl],
-    credentials: true
+  helmet({
+    crossOriginResourcePolicy: false
   })
 );
-app.use(helmet());
 app.use(morgan("dev"));
 app.post(
   "/api/v1/billing/webhook",

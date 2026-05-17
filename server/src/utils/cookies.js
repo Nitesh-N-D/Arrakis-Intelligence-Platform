@@ -27,5 +27,4 @@ export const clearRefreshTokenCookie = (res) => {
   res.clearCookie(env.refreshCookieName, getCookieBaseOptions());
 };
 
-export const getRefreshTokenFromRequest = (req) =>
-  req.body?.refreshToken || req.cookies?.[env.refreshCookieName] || null;
+export const getRefreshTokenFromRequest = (req) => req.cookies?.[env.refreshCookieName] || null;

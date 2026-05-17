@@ -48,6 +48,21 @@ const upsertBillingState = async (userId, patch) => {
   return userRepository.updateById(userId, { billing: nextBilling });
 };
 
+const normalizeStripeError = (error, fallbackMessage) => {
+  const status = error.response?.status;
+  const providerMessage = error.response?.data?.error?.message;
+
+  if (status && providerMessage) {
+    return new ApiError(status >= 500 ? 502 : status, providerMessage);
+  }
+
+  if (error instanceof ApiError) {
+    return error;
+  }
+
+  return new ApiError(502, fallbackMessage);
+};
+
 export class StripeService {
   getPlans() {
     return [
@@ -89,15 +104,20 @@ export class StripeService {
 
     this.assertConfigured();
 
-    const response = await stripeApi.post(
-      "/customers",
-      asForm({
-        email: user.email,
-        name: user.name,
-        "metadata[userId]": user.id
-      }),
-      { headers: stripeHeaders() }
-    );
+    let response;
+    try {
+      response = await stripeApi.post(
+        "/customers",
+        asForm({
+          email: user.email,
+          name: user.name,
+          "metadata[userId]": user.id
+        }),
+        { headers: stripeHeaders() }
+      );
+    } catch (error) {
+      throw normalizeStripeError(error, "Unable to create the Stripe customer.");
+    }
 
     await upsertBillingState(user.id, {
       stripeCustomerId: response.data.id
@@ -109,20 +129,26 @@ export class StripeService {
   async createCheckoutSession(user) {
     this.assertConfigured();
     const customerId = await this.ensureCustomer(user);
-    const response = await stripeApi.post(
-      "/checkout/sessions",
-      asForm({
-        mode: "subscription",
-        customer: customerId,
-        success_url: env.stripeSuccessUrl,
-        cancel_url: env.stripeCancelUrl,
-        "line_items[0][price]": env.stripePriceProMonthly,
-        "line_items[0][quantity]": 1,
-        "allow_promotion_codes": true,
-        "metadata[userId]": user.id
-      }),
-      { headers: stripeHeaders() }
-    );
+    let response;
+
+    try {
+      response = await stripeApi.post(
+        "/checkout/sessions",
+        asForm({
+          mode: "subscription",
+          customer: customerId,
+          success_url: env.stripeSuccessUrl,
+          cancel_url: env.stripeCancelUrl,
+          "line_items[0][price]": env.stripePriceProMonthly,
+          "line_items[0][quantity]": 1,
+          "allow_promotion_codes": true,
+          "metadata[userId]": user.id
+        }),
+        { headers: stripeHeaders() }
+      );
+    } catch (error) {
+      throw normalizeStripeError(error, "Unable to create the checkout session.");
+    }
 
     return {
       id: response.data.id,
@@ -133,14 +159,20 @@ export class StripeService {
   async createPortalSession(user) {
     this.assertConfigured();
     const customerId = await this.ensureCustomer(user);
-    const response = await stripeApi.post(
-      "/billing_portal/sessions",
-      asForm({
-        customer: customerId,
-        return_url: env.stripePortalReturnUrl
-      }),
-      { headers: stripeHeaders() }
-    );
+    let response;
+
+    try {
+      response = await stripeApi.post(
+        "/billing_portal/sessions",
+        asForm({
+          customer: customerId,
+          return_url: env.stripePortalReturnUrl
+        }),
+        { headers: stripeHeaders() }
+      );
+    } catch (error) {
+      throw normalizeStripeError(error, "Unable to create the billing portal session.");
+    }
 
     return {
       id: response.data.id,

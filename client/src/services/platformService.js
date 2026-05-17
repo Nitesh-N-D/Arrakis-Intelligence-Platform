@@ -16,5 +16,8 @@ export const platformService = {
   leaderboardUsers: () => http.get("/leaderboard/users"),
   leaderboardTeams: () => http.get("/leaderboard/teams"),
   createTeam: (payload) => http.post("/team/create", payload),
-  joinTeam: (payload) => http.post("/team/join", payload)
+  joinTeam: (payload) => http.post("/team/join", payload),
+  profile: () => http.get("/profile"),
+  updateProfile: (payload) => http.patch("/profile", payload),
+  updateSettings: (payload) => http.patch("/profile/settings", payload)
 };

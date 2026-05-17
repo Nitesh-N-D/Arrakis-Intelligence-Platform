@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import AuthShell from "../components/ui/AuthShell";
 import Button from "../components/ui/Button";
 import GoogleButton from "../components/ui/GoogleButton";
@@ -9,7 +9,8 @@ import { authService } from "../services/authService";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { setUser, setAccessToken, setRefreshToken } = useAuth();
+  const location = useLocation();
+  const { setUser, setAccessToken } = useAuth();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -25,13 +26,13 @@ export default function RegisterPage() {
 
   const submit = async (event) => {
     event.preventDefault();
+    setError("");
 
     try {
       const response = await authService.register(form);
       setUser(response.data.user);
       setAccessToken(response.data.accessToken);
-      setRefreshToken(response.data.refreshToken);
-      navigate("/");
+      navigate(location.state?.from?.pathname || "/", { replace: true });
     } catch (registerError) {
       setError(registerError.message || "Unable to register");
     }

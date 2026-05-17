@@ -1,3 +1,4 @@
+import { ApiError } from "../utils/ApiError.js";
 import { env } from "../config/env.js";
 import { RefreshTokenRepository } from "../repositories/RefreshTokenRepository.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
@@ -32,12 +33,22 @@ export class TokenService {
   }
 
   async rotateRefreshToken(token, meta = {}) {
-    verifyRefreshToken(token);
+    try {
+      verifyRefreshToken(token);
+    } catch (_error) {
+      throw new ApiError(401, "Refresh token is invalid or expired");
+    }
+
     const tokenHash = hashOpaqueToken(token);
     const record = await refreshTokenRepository.findValidToken(tokenHash);
 
-    if (!record || record.expiresAt < new Date()) {
-      throw new Error("Refresh token is invalid");
+    if (!record) {
+      throw new ApiError(401, "Refresh token is invalid or expired");
+    }
+
+    if (record.expiresAt < new Date()) {
+      await refreshTokenRepository.revokeToken(tokenHash);
+      throw new ApiError(401, "Refresh token is invalid or expired");
     }
 
     await refreshTokenRepository.revokeToken(tokenHash);

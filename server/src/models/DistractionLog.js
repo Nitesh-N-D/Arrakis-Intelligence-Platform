@@ -19,4 +19,6 @@ const distractionLogSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+distractionLogSchema.index({ user: 1, loggedAt: -1 });
+
 export const DistractionLog = mongoose.model("DistractionLog", distractionLogSchema);

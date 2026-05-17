@@ -1,5 +1,6 @@
 import axios from "axios";
 import { env } from "../config/env.js";
+import { ApiError } from "../utils/ApiError.js";
 import { AnalyticsService } from "./analyticsService.js";
 import { PrescienceService } from "./prescienceService.js";
 
@@ -83,7 +84,10 @@ const createFallbackInsight = ({ dashboard, prescience, question, capability }) 
     focusSchedule: {
       recommendedStartHour: prescience.averages.distractionMinutes > 100 ? "08:30" : "09:00",
       recommendedPrimarySession: focusEfficiency >= 75 ? 50 : 25,
-      recommendedRecoveryWindow: prescience.burnoutRisk >= 70 ? "Take a 15-minute reset after each focus block." : "Use a 5-minute reset between harvests."
+      recommendedRecoveryWindow:
+        prescience.burnoutRisk >= 70
+          ? "Take a 15-minute reset after each focus block."
+          : "Use a 5-minute reset between harvests."
     },
     signals: {
       burnoutRisk: prescience.burnoutRisk,
@@ -217,7 +221,7 @@ export class MentatService {
     const parsed = tryParseJson(rawText);
 
     if (!parsed) {
-      throw new Error("OpenAI Mentat response was not valid JSON");
+      throw new ApiError(502, "OpenAI Mentat response was not valid JSON");
     }
 
     return parsed;

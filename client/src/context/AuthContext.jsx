@@ -1,64 +1,110 @@
 import { createContext, useEffect, useMemo, useState } from "react";
 import { authService } from "../services/authService";
-import { setAccessToken } from "../services/http";
+import { setAccessToken, subscribeToAccessToken } from "../services/http";
 
 export const AuthContext = createContext(null);
 
+const isAuthFailure = (error) => {
+  const statusCode = error?.statusCode;
+  return statusCode === 401 || statusCode === 403;
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [accessToken, setToken] = useState(localStorage.getItem("arrakis_access_token"));
-  const [refreshToken, setRefreshToken] = useState(localStorage.getItem("arrakis_refresh_token"));
+  const [accessToken, setToken] = useState(null);
+  const [bootstrapping, setBootstrapping] = useState(true);
+  const [sessionState, setSessionState] = useState("bootstrapping");
 
   useEffect(() => {
     setAccessToken(accessToken);
-
-    if (accessToken) {
-      localStorage.setItem("arrakis_access_token", accessToken);
-    } else {
-      localStorage.removeItem("arrakis_access_token");
-    }
   }, [accessToken]);
 
   useEffect(() => {
-    if (refreshToken) {
-      localStorage.setItem("arrakis_refresh_token", refreshToken);
-    } else {
-      localStorage.removeItem("arrakis_refresh_token");
-    }
-  }, [refreshToken]);
+    const unsubscribe = subscribeToAccessToken((token) => {
+      setToken((current) => (current === token ? current : token));
+    });
+
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
-    if (!accessToken) return;
+    let cancelled = false;
 
-    authService
-      .me()
-      .then((response) => setUser(response.data))
-      .catch(() => {
-        setUser(null);
-        setToken(null);
-        setRefreshToken(null);
-      });
+    const bootstrap = async () => {
+      try {
+        let nextAccessToken = accessToken;
+
+        if (!nextAccessToken) {
+          const refreshResponse = await authService.refresh();
+          nextAccessToken = refreshResponse.data?.accessToken || null;
+
+          if (cancelled) {
+            return;
+          }
+
+          if (nextAccessToken) {
+            setToken(nextAccessToken);
+          }
+        }
+
+        if (!nextAccessToken) {
+          if (!cancelled) {
+            setUser(null);
+            setSessionState("anonymous");
+          }
+          return;
+        }
+
+        const response = await authService.me();
+        if (!cancelled) {
+          setUser(response.data);
+          setSessionState("authenticated");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          if (isAuthFailure(error)) {
+            setUser(null);
+            setToken(null);
+            setSessionState("expired");
+          } else {
+            setSessionState("offline");
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          setBootstrapping(false);
+        }
+      }
+    };
+
+    bootstrap().catch(() => {
+      if (!cancelled) {
+        setBootstrapping(false);
+        setSessionState("offline");
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [accessToken]);
 
   const value = useMemo(
     () => ({
       user,
       accessToken,
-      refreshToken,
+      bootstrapping,
+      sessionState,
       setUser,
       setAccessToken: setToken,
-      setRefreshToken,
       logout: async () => {
-        if (refreshToken) {
-          await authService.logout(refreshToken).catch(() => {});
-        }
-
+        await authService.logout().catch(() => {});
         setUser(null);
         setToken(null);
-        setRefreshToken(null);
+        setSessionState("anonymous");
       }
     }),
-    [user, accessToken, refreshToken]
+    [user, accessToken, bootstrapping, sessionState]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

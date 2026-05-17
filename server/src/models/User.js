@@ -14,7 +14,11 @@ const preferenceSchema = new mongoose.Schema(
     stormWarningMinutes: { type: Number, default: 60 },
     blockedSites: { type: [String], default: [] },
     strictBlockMode: { type: Boolean, default: false },
-    extensionOverrideMinutes: { type: Number, default: 5 }
+    extensionOverrideMinutes: { type: Number, default: 5 },
+    theme: { type: String, enum: ["dark", "system"], default: "dark" },
+    desktopNotificationsEnabled: { type: Boolean, default: true },
+    stormAlarmEnabled: { type: Boolean, default: true },
+    weeklyDigestEnabled: { type: Boolean, default: true }
   },
   { _id: false }
 );
@@ -49,8 +53,10 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String },
     provider: { type: String, enum: ["local", "google"], default: "local" },
-    googleId: { type: String, default: null },
+    googleId: { type: String, default: null, unique: true, sparse: true },
     role: { type: String, enum: ["user", "admin"], default: "user" },
+    avatarUrl: { type: String, default: "" },
+    bio: { type: String, default: "", maxlength: 280 },
     skills: { type: [userSkillSchema], default: [] },
     targetRole: { type: String, default: "AI Systems Engineer" },
     totalSpice: { type: Number, default: 0 },
@@ -67,5 +73,6 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
 
 export const User = mongoose.model("User", userSchema);

@@ -314,6 +314,14 @@ export default function DashboardPage() {
 
   const handleStormLog = async (event) => {
     event.preventDefault();
+    if (!stormForm.appName.trim()) {
+      setActionError("Please provide the app or site that triggered the distraction.");
+      return;
+    }
+    if (Number(stormForm.duration) <= 0) {
+      setActionError("Distraction duration must be greater than zero.");
+      return;
+    }
     setStormSubmitting(true);
     setActionError("");
 
@@ -352,6 +360,10 @@ export default function DashboardPage() {
 
   const createTeam = async (event) => {
     event.preventDefault();
+    if (!teamForm.createName.trim()) {
+      setActionError("Please enter a team name before creating a team.");
+      return;
+    }
     setTeamSubmitting("create");
     setActionError("");
 
@@ -369,6 +381,10 @@ export default function DashboardPage() {
 
   const joinTeam = async (event) => {
     event.preventDefault();
+    if (!teamForm.joinName.trim()) {
+      setActionError("Please enter a team name before trying to join.");
+      return;
+    }
     setTeamSubmitting("join");
     setActionError("");
 
@@ -441,8 +457,11 @@ export default function DashboardPage() {
         <main className="min-w-0">
           <Navbar
             billingPlan={billingStatus?.plan || "free"}
+            onBilling={() => navigate("/pricing")}
             onLogout={logout}
             onMenu={() => setMobileMenuOpen(true)}
+            onProfile={() => navigate("/profile")}
+            onSettings={() => navigate("/settings")}
             onUpgrade={() => navigate("/pricing")}
             operative={operative}
           />
@@ -875,3 +894,6 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
+

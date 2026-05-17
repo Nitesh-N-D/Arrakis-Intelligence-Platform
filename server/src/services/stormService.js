@@ -1,3 +1,4 @@
+import { ApiError } from "../utils/ApiError.js";
 import { DistractionLogRepository } from "../repositories/DistractionLogRepository.js";
 import { UserRepository } from "../repositories/UserRepository.js";
 import { StormEngine } from "./stormEngine.js";
@@ -5,18 +6,34 @@ import { StormEngine } from "./stormEngine.js";
 const distractionLogRepository = new DistractionLogRepository();
 const userRepository = new UserRepository();
 const stormEngine = new StormEngine();
+const validSeverities = ["low", "medium", "high"];
 
 export class StormService {
   async logDistraction(user, payload) {
     const loggedAt = payload.loggedAt ? new Date(payload.loggedAt) : new Date();
-    const site = payload.site || payload.metadata?.site || "";
-    const url = payload.url || payload.metadata?.url || "";
+    if (Number.isNaN(loggedAt.getTime())) {
+      throw new ApiError(400, "Logged timestamp is invalid");
+    }
+
+    const duration = Number(payload.duration);
+    if (!Number.isFinite(duration) || duration <= 0 || duration > 24 * 60) {
+      throw new ApiError(400, "Distraction duration must be between 1 and 1440 minutes");
+    }
+
+    const site = String(payload.site || payload.metadata?.site || "").trim();
+    const url = String(payload.url || payload.metadata?.url || "").trim();
+    const appName = String(payload.appName || site || "Browser").trim();
+    if (!appName) {
+      throw new ApiError(400, "App or site name is required");
+    }
+
+    const severity = validSeverities.includes(payload.severity) ? payload.severity : "medium";
 
     const log = await distractionLogRepository.create({
       user: user.id,
-      appName: payload.appName || site || "Browser",
-      duration: payload.duration,
-      severity: payload.severity || "medium",
+      appName,
+      duration,
+      severity,
       loggedAt,
       metadata: {
         device: payload.metadata?.device || payload.device || "desktop",
