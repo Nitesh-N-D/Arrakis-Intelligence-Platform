@@ -19,9 +19,11 @@ export const env = {
   appUrl: process.env.APP_URL || process.env.CLIENT_URL || "http://localhost:5173",
   allowedOrigins: parseAllowedOrigins(),
   googleSuccessRedirectUrl:
-    process.env.GOOGLE_SUCCESS_REDIRECT_URL || "http://localhost:5173/auth/callback",
+    process.env.GOOGLE_SUCCESS_REDIRECT_URL ||
+    `${process.env.CLIENT_URL || "http://localhost:5173"}/auth/callback`,
   googleFailureRedirectUrl:
-    process.env.GOOGLE_FAILURE_REDIRECT_URL || "http://localhost:5173/login?error=google_auth_failed",
+    process.env.GOOGLE_FAILURE_REDIRECT_URL ||
+    `${process.env.CLIENT_URL || "http://localhost:5173"}/login?error=google_auth_failed`,
   mongoUri: process.env.MONGODB_URI || "mongodb://localhost:27017/arrakis-intelligence",
   jwtAccessSecret: process.env.JWT_ACCESS_SECRET || "dev-access-secret",
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || "dev-refresh-secret",
@@ -33,15 +35,6 @@ export const env = {
     process.env.GOOGLE_REDIRECT_URI || "http://localhost:5000/api/v1/auth/google/callback",
   refreshCookieName: process.env.REFRESH_COOKIE_NAME || "arrakis_refresh_token",
   secureCookies: process.env.SECURE_COOKIES === "true",
-  stripeSecretKey: process.env.STRIPE_SECRET_KEY || "",
-  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || "",
-  stripePriceProMonthly: process.env.STRIPE_PRICE_PRO_MONTHLY || "",
-  stripeSuccessUrl:
-    process.env.STRIPE_SUCCESS_URL || `${process.env.CLIENT_URL || "http://localhost:5173"}/pricing?checkout=success`,
-  stripeCancelUrl:
-    process.env.STRIPE_CANCEL_URL || `${process.env.CLIENT_URL || "http://localhost:5173"}/pricing?checkout=cancelled`,
-  stripePortalReturnUrl:
-    process.env.STRIPE_PORTAL_RETURN_URL || `${process.env.CLIENT_URL || "http://localhost:5173"}/pricing`,
   mentatProvider: process.env.MENTAT_PROVIDER || "heuristic",
   openaiApiKey: process.env.OPENAI_API_KEY || "",
   openaiModel: process.env.OPENAI_MODEL || "gpt-5",
@@ -63,6 +56,14 @@ if (env.nodeEnv === "production") {
 
   if (!process.env.MONGODB_URI) {
     productionErrors.push("MONGODB_URI must be configured in production.");
+  }
+
+  if (!env.allowedOrigins.length) {
+    productionErrors.push("ALLOWED_ORIGINS or CLIENT_URL must be configured in production.");
+  }
+
+  if (!env.secureCookies) {
+    productionErrors.push("SECURE_COOKIES must be true in production.");
   }
 
   if (productionErrors.length > 0) {

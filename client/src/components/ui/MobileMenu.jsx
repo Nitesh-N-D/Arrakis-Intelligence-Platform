@@ -1,13 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Button from "./Button";
 
-export default function MobileMenu({
-  open,
-  onClose,
-  sections = [],
-  onNavigate,
-  plan = "free"
-}) {
+export default function MobileMenu({ open, onClose, sections = [], onNavigate }) {
   return (
     <AnimatePresence>
       {open ? (
@@ -50,10 +44,6 @@ export default function MobileMenu({
                   </div>
                 </button>
               ))}
-            </div>
-
-            <div className="mt-5 rounded-card border border-amber-300/15 bg-amber-300/10 px-4 py-3 text-sm text-amber-50">
-              Current plan: <span className="font-semibold uppercase">{plan}</span>
             </div>
           </motion.div>
         </motion.div>

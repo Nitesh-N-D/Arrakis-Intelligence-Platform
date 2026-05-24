@@ -82,7 +82,6 @@ export class AnalyticsService {
         stormModeActive: syncedUser.stormModeActive,
         targetRole: syncedUser.targetRole,
         preferences: syncedUser.preferences,
-        billing: syncedUser.billing,
         onboarding: syncedUser.onboarding,
         team: syncedUser.team
           ? {

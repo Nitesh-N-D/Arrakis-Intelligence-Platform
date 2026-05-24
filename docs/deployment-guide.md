@@ -1,35 +1,29 @@
 # Deployment Guide
 
-## Frontend on Vercel
+## Frontend
 
-- root directory: `client`
-- build command: `npm run build`
-- output directory: `dist`
-- configure `VITE_API_URL`, `VITE_SOCKET_URL`, `VITE_APP_URL`, `VITE_GOOGLE_SITE_VERIFICATION`
+Deploy `client/` to Vercel with:
 
-## Backend on Render
+- Build command: `npm run build`
+- Output directory: `dist`
+- Environment variables:
+  - `VITE_API_URL=https://arrakis-intelligence-platform.onrender.com/api/v1`
+  - `VITE_SOCKET_URL=https://arrakis-intelligence-platform.onrender.com`
+  - `VITE_APP_URL=https://arrakis-intelligence-platform.vercel.app`
 
-- root directory: `server`
-- build command: `npm install`
-- start command: `npm start`
-- configure MongoDB, JWT, Google OAuth, Stripe, and optional OpenAI env vars
+## Backend
 
-## MongoDB Atlas
+Deploy `server/` to Render with:
 
-- create cluster
-- create application user
-- allow backend egress IPs
-- set `MONGODB_URI` in Render or server env
-
-## Stripe
-
-- configure `STRIPE_SECRET_KEY`
-- configure `STRIPE_PRICE_PRO_MONTHLY`
-- configure `STRIPE_WEBHOOK_SECRET`
-- point Stripe webhook to `/api/v1/billing/webhook`
-
-## Google OAuth
-
-- configure consent screen
-- add callback URL: `/api/v1/auth/google/callback`
-- align frontend redirect URLs with deployed app URLs
+- Build command: `npm install`
+- Start command: `npm start`
+- Environment variables:
+  - `NODE_ENV=production`
+  - `CLIENT_URL=https://arrakis-intelligence-platform.vercel.app`
+  - `APP_URL=https://arrakis-intelligence-platform.vercel.app`
+  - `ALLOWED_ORIGINS=https://arrakis-intelligence-platform.vercel.app`
+  - `MONGODB_URI=<atlas-uri>`
+  - `JWT_ACCESS_SECRET=<strong-secret>`
+  - `JWT_REFRESH_SECRET=<strong-secret>`
+  - `SECURE_COOKIES=true`
+  - `GOOGLE_REDIRECT_URI=https://arrakis-intelligence-platform.onrender.com/api/v1/auth/google/callback`

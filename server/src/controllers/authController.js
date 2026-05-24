@@ -41,7 +41,6 @@ const serializeUser = (user) => ({
   skills: user.skills,
   organizationId: user.organizationId,
   teamRole: user.teamRole,
-  billing: user.billing,
   onboarding: user.onboarding,
   preferences: user.preferences,
   team: user.team

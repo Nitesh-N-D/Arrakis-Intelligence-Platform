@@ -3,13 +3,7 @@ import Button from "./Button";
 import Card from "./Card";
 import EmptyState from "./EmptyState";
 
-export default function MentatPanel({
-  analysis,
-  loading,
-  onRefresh,
-  onUpgrade,
-  plan = "free"
-}) {
+export default function MentatPanel({ analysis, loading, onRefresh }) {
   const [question, setQuestion] = useState("");
 
   return (
@@ -23,11 +17,6 @@ export default function MentatPanel({
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          {plan !== "pro" ? (
-            <Button onClick={onUpgrade} variant="secondary">
-              Upgrade for full Mentat
-            </Button>
-          ) : null}
           <Button disabled={loading} onClick={() => onRefresh(question)}>
             {loading ? "Consulting..." : "Refresh insight"}
           </Button>
@@ -45,11 +34,7 @@ export default function MentatPanel({
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
           />
-          <Button
-            className="md:min-w-[9rem]"
-            disabled={loading}
-            onClick={() => onRefresh(question)}
-          >
+          <Button className="md:min-w-[9rem]" disabled={loading} onClick={() => onRefresh(question)}>
             Send
           </Button>
         </div>
@@ -76,9 +61,7 @@ export default function MentatPanel({
             </div>
             <div className="rounded-card border border-border-subtle bg-white/4 p-4">
               <div className="text-xs uppercase tracking-[0.28em] text-white/45">Next best action</div>
-              <div className="mt-3 text-base font-semibold text-amber-100">
-                {analysis.nextBestAction}
-              </div>
+              <div className="mt-3 text-base font-semibold text-amber-100">{analysis.nextBestAction}</div>
             </div>
             <div className="rounded-card border border-border-subtle bg-white/4 p-4">
               <div className="text-xs uppercase tracking-[0.28em] text-white/45">Recommendations</div>
@@ -121,11 +104,6 @@ export default function MentatPanel({
                 )}
               </div>
             </div>
-            {analysis.upgradeRequired ? (
-              <div className="rounded-card border border-amber-300/15 bg-amber-300/10 p-4 text-sm text-amber-50">
-                Free plan insight is intentionally concise. Upgrade to Pro for full Mentat guidance and richer recommendations.
-              </div>
-            ) : null}
           </div>
         </div>
       ) : null}

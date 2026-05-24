@@ -64,7 +64,6 @@ const serializeProfile = (user) => ({
   currentRank: user.currentRank,
   focusStreak: user.focusStreak,
   preferences: user.preferences,
-  billing: user.billing,
   onboarding: user.onboarding,
   team: user.team
     ? {

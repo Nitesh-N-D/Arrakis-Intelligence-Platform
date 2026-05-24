@@ -23,21 +23,6 @@ const preferenceSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const billingSchema = new mongoose.Schema(
-  {
-    plan: { type: String, enum: ["free", "pro"], default: "free" },
-    status: {
-      type: String,
-      enum: ["inactive", "trialing", "active", "past_due", "canceled"],
-      default: "inactive"
-    },
-    stripeCustomerId: { type: String, default: null },
-    stripeSubscriptionId: { type: String, default: null },
-    currentPeriodEnd: { type: Date, default: null }
-  },
-  { _id: false }
-);
-
 const onboardingSchema = new mongoose.Schema(
   {
     completed: { type: Boolean, default: false },
@@ -68,11 +53,9 @@ const userSchema = new mongoose.Schema(
     teamRole: { type: String, enum: ["owner", "member"], default: "member" },
     team: { type: mongoose.Schema.Types.ObjectId, ref: "Team", default: null },
     preferences: { type: preferenceSchema, default: () => ({}) },
-    billing: { type: billingSchema, default: () => ({}) },
     onboarding: { type: onboardingSchema, default: () => ({}) }
   },
   { timestamps: true }
 );
-
 
 export const User = mongoose.model("User", userSchema);

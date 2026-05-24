@@ -99,7 +99,7 @@ const safeScrollTo = (href) => {
   }
 };
 
-const buildChecklist = (operative, dashboard, prescience, billingPlan) => [
+const buildChecklist = (operative, dashboard, prescience) => [
   {
     label: "Complete your first harvest",
     done: dashboard.analytics.summary.focusSessionsCount > 0
@@ -115,10 +115,6 @@ const buildChecklist = (operative, dashboard, prescience, billingPlan) => [
   {
     label: "Reach a stable burnout band",
     done: prescience?.riskBand === "STABLE"
-  },
-  {
-    label: "Unlock full Mentat guidance",
-    done: billingPlan === "pro"
   }
 ];
 
@@ -134,7 +130,6 @@ export default function DashboardPage() {
   const { user, accessToken, setUser, logout } = useAuth();
   const [dashboard, setDashboard] = useState(emptyDashboard);
   const [prescience, setPrescience] = useState(null);
-  const [billingStatus, setBillingStatus] = useState(user?.billing || { plan: "free", status: "inactive" });
   const [mentat, setMentat] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -149,20 +144,17 @@ export default function DashboardPage() {
   const socket = useSocket(accessToken);
 
   const refreshData = useCallback(async () => {
-    const [dashboardResponse, prescienceResponse, billingResponse] = await Promise.all([
+    const [dashboardResponse, prescienceResponse] = await Promise.all([
       platformService.dashboard(),
-      platformService.prescience(),
-      platformService.billingStatus()
+      platformService.prescience()
     ]);
 
     setDashboard(normalizeDashboard(dashboardResponse.data));
     setPrescience(prescienceResponse.data);
-    setBillingStatus(billingResponse.data || { plan: "free", status: "inactive" });
     setUser((current) =>
       current
         ? {
             ...current,
-            billing: billingResponse.data || current.billing,
             preferences:
               dashboardResponse.data?.operative?.preferences || current.preferences
           }
@@ -408,8 +400,8 @@ export default function DashboardPage() {
   const stormState = dashboard.analytics.stormState;
   const performanceSignals = dashboard.analytics.performanceSignals;
   const checklist = useMemo(
-    () => buildChecklist(operative, dashboard, prescience, billingStatus?.plan || "free"),
-    [operative, dashboard, prescience, billingStatus?.plan]
+    () => buildChecklist(operative, dashboard, prescience),
+    [operative, dashboard, prescience]
   );
 
   if (loading) {
@@ -447,22 +439,18 @@ export default function DashboardPage() {
         open={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
         onNavigate={safeScrollTo}
-        plan={billingStatus?.plan || "free"}
         sections={dashboardSections}
       />
 
       <div className="mx-auto max-w-[96rem] xl:grid xl:grid-cols-[18rem_minmax(0,1fr)] xl:gap-6">
-        <Sidebar plan={billingStatus?.plan || "free"} sections={dashboardSections} />
+        <Sidebar sections={dashboardSections} />
 
         <main className="min-w-0">
           <Navbar
-            billingPlan={billingStatus?.plan || "free"}
-            onBilling={() => navigate("/pricing")}
             onLogout={logout}
             onMenu={() => setMobileMenuOpen(true)}
             onProfile={() => navigate("/profile")}
             onSettings={() => navigate("/settings")}
-            onUpgrade={() => navigate("/pricing")}
             operative={operative}
           />
 
@@ -598,11 +586,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {billingStatus?.plan !== "pro" ? (
-                    <div className="rounded-card border border-amber-300/15 bg-amber-300/10 px-4 py-3 text-sm text-amber-50">
-                      Free tier active. Upgrade to unlock full Mentat guidance, strict blocking, and richer analytics.
-                    </div>
-                  ) : null}
+
                 </div>
               </Card>
 
@@ -885,8 +869,6 @@ export default function DashboardPage() {
               analysis={mentat}
               loading={mentatLoading}
               onRefresh={(question) => refreshMentat(question)}
-              onUpgrade={() => navigate("/pricing")}
-              plan={billingStatus?.plan || "free"}
             />
           </section>
         </main>
@@ -894,6 +876,10 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
+
+
 
 
 

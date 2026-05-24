@@ -5,16 +5,7 @@ import ProfileDropdown from "./ProfileDropdown";
 import RankBadge from "./RankBadge";
 import UserAvatar from "./UserAvatar";
 
-export default function Navbar({
-  operative,
-  billingPlan = "free",
-  onBilling,
-  onLogout,
-  onMenu,
-  onProfile,
-  onSettings,
-  onUpgrade
-}) {
+export default function Navbar({ operative, onLogout, onMenu, onProfile, onSettings }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const dropdownRef = useRef(null);
@@ -65,10 +56,6 @@ export default function Navbar({
 
           <div className="flex flex-wrap items-center justify-end gap-3">
             <RankBadge rank={operative?.rank || operative?.currentRank || "Outworlder"} />
-            <div className="rounded-full border border-border-subtle bg-white/5 px-4 py-2 text-sm text-white/70">
-              Plan <span className="font-semibold uppercase text-amber-100">{billingPlan}</span>
-            </div>
-            {billingPlan !== "pro" ? <Button onClick={onUpgrade}>Upgrade</Button> : null}
 
             <div className="relative" ref={dropdownRef}>
               <button
@@ -87,7 +74,6 @@ export default function Navbar({
               <ProfileDropdown
                 open={menuOpen}
                 operative={operative}
-                onBilling={onBilling}
                 onClose={() => setMenuOpen(false)}
                 onLogout={() => setConfirmLogout(true)}
                 onProfile={onProfile}

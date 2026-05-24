@@ -89,13 +89,10 @@ export default function SettingsPage() {
       <Toast {...toast} />
       <div className="mx-auto max-w-[92rem]">
         <Navbar
-          billingPlan={user?.billing?.plan || "free"}
-          onBilling={() => navigate("/pricing")}
           onLogout={logout}
           onMenu={() => {}}
           onProfile={() => navigate("/profile")}
           onSettings={() => navigate("/settings")}
-          onUpgrade={() => navigate("/pricing")}
           operative={user}
         />
 

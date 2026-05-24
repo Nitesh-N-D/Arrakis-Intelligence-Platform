@@ -1,4 +1,4 @@
-export default function Sidebar({ sections = [], plan = "free" }) {
+export default function Sidebar({ sections = [] }) {
   return (
     <aside className="hidden xl:block">
       <div className="glass-panel sticky top-6 space-y-5 p-5">
@@ -24,10 +24,6 @@ export default function Sidebar({ sections = [], plan = "free" }) {
             </a>
           ))}
         </nav>
-
-        <div className="rounded-card border border-amber-300/15 bg-amber-300/10 px-4 py-3 text-sm text-amber-50">
-          Plan: <span className="font-semibold uppercase">{plan}</span>
-        </div>
       </div>
     </aside>
   );

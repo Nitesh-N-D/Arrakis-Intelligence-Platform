@@ -4,11 +4,10 @@ import { useAuth } from "./hooks/useAuth";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
-import PricingPage from "./pages/PricingPage";
+import NotFoundPage from "./pages/NotFoundPage";
 import ProfilePage from "./pages/ProfilePage";
 import RegisterPage from "./pages/RegisterPage";
 import SettingsPage from "./pages/SettingsPage";
-import NotFoundPage from "./pages/NotFoundPage";
 
 const ProtectedRoute = ({ children }) => {
   const { accessToken, bootstrapping } = useAuth();
@@ -57,7 +56,6 @@ export default function App() {
         }
       />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
-      <Route path="/pricing" element={<PricingPage />} />
       <Route
         path="/profile"
         element={

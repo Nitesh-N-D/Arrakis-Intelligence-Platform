@@ -7,15 +7,9 @@ import { PrescienceService } from "./prescienceService.js";
 const analyticsService = new AnalyticsService();
 const prescienceService = new PrescienceService();
 
-const planCapabilities = {
-  free: {
-    maxRecommendations: 2,
-    includeChat: false
-  },
-  pro: {
-    maxRecommendations: 4,
-    includeChat: true
-  }
+const capability = {
+  maxRecommendations: 4,
+  includeChat: true
 };
 
 const getTrendDirection = (data, key) => {
@@ -31,7 +25,7 @@ const getTrendDirection = (data, key) => {
   return "steady";
 };
 
-const createFallbackInsight = ({ dashboard, prescience, question, capability }) => {
+const createFallbackInsight = ({ dashboard, prescience, question }) => {
   const focusTrendDirection = getTrendDirection(dashboard.analytics.focusTrend, "totalSpice");
   const stormTrendDirection = getTrendDirection(
     dashboard.analytics.distractionTrend,
@@ -47,7 +41,7 @@ const createFallbackInsight = ({ dashboard, prescience, question, capability }) 
   const recommendations = [
     focusTrendDirection === "down"
       ? "Your spice trend softened. Protect the next morning with a guaranteed 25-minute harvest before communications."
-      : "Your spice trend is stable. Preserve momentum by starting the same time tomorrow.",
+      : "Your spice trend is stable. Preserve momentum by starting at the same time tomorrow.",
     stormTrendDirection === "up"
       ? "Storm pressure is climbing. Add one distracting domain to the blocker before your next deep session."
       : "Storm load is contained. Keep the same blocker perimeter during your highest-value hours.",
@@ -113,10 +107,7 @@ export class MentatService {
       prescienceService.analyze(user)
     ]);
 
-    const capability =
-      planCapabilities[user.billing?.plan || "free"] || planCapabilities.free;
-
-    return { dashboard, prescience, question, capability };
+    return { dashboard, prescience, question };
   }
 
   async analyze(user, payload = {}) {
@@ -128,24 +119,20 @@ export class MentatService {
         return {
           ...remote,
           provider: "openai",
-          capability: context.capability,
-          upgradeRequired: user.billing?.plan !== "pro"
+          capability
         };
       } catch (_error) {
         const fallback = createFallbackInsight(context);
         return {
           ...fallback,
           degraded: true,
-          degradedReason: "Mentat fell back to heuristic mode because the remote AI provider was unavailable.",
-          upgradeRequired: user.billing?.plan !== "pro"
+          degradedReason:
+            "Mentat fell back to heuristic mode because the remote AI provider was unavailable."
         };
       }
     }
 
-    return {
-      ...createFallbackInsight(context),
-      upgradeRequired: user.billing?.plan !== "pro"
-    };
+    return createFallbackInsight(context);
   }
 
   async analyzeWithOpenAI(context) {
@@ -213,7 +200,7 @@ export class MentatService {
           Authorization: `Bearer ${env.openaiApiKey}`,
           "Content-Type": "application/json"
         },
-        timeout: 20_000
+        timeout: 20000
       }
     );
 

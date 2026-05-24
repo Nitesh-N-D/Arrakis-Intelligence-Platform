@@ -5,15 +5,7 @@ import UserAvatar from "./UserAvatar";
 const menuButtonClassName =
   "w-full rounded-button border border-border-subtle bg-white/4 px-4 py-3 text-left text-sm text-white/72 transition hover:border-orange-300/20 hover:bg-white/8 hover:text-white";
 
-export default function ProfileDropdown({
-  open,
-  operative,
-  onBilling,
-  onClose,
-  onLogout,
-  onProfile,
-  onSettings
-}) {
+export default function ProfileDropdown({ open, operative, onClose, onLogout, onProfile, onSettings }) {
   return (
     <AnimatePresence>
       {open ? (
@@ -38,9 +30,6 @@ export default function ProfileDropdown({
             </button>
             <button className={menuButtonClassName} onClick={() => { onSettings?.(); onClose?.(); }} type="button">
               Settings
-            </button>
-            <button className={menuButtonClassName} onClick={() => { onBilling?.(); onClose?.(); }} type="button">
-              Billing
             </button>
           </div>
 
