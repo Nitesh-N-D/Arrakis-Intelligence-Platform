@@ -8,6 +8,8 @@ import NotFoundPage from "./pages/NotFoundPage";
 import ProfilePage from "./pages/ProfilePage";
 import RegisterPage from "./pages/RegisterPage";
 import SettingsPage from "./pages/SettingsPage";
+import Privacy from "./pages/Privacy";
+
 
 const ProtectedRoute = ({ children }) => {
   const { accessToken, bootstrapping } = useAuth();
@@ -81,6 +83,7 @@ export default function App() {
         }
       />
       <Route path="*" element={<NotFoundPage />} />
+      <Route path="/privacy" element={<Privacy />} />
     </Routes>
   );
 }
