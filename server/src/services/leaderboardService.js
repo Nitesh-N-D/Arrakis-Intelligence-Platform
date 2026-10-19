@@ -8,7 +8,6 @@ const formatUserEntry = (user, index) => ({
   rank: index + 1,
   id: user.id,
   name: user.name,
-  email: user.email,
   totalSpice: user.totalSpice,
   focusStreak: user.focusStreak,
   currentRank: user.currentRank,
@@ -35,12 +34,19 @@ const formatTeamEntry = (team, index) => ({
 });
 
 export class LeaderboardService {
+  normalizeLimit(limit, fallback) {
+    const value = Number(limit);
+    return Number.isFinite(value) ? Math.max(1, Math.min(50, Math.trunc(value))) : fallback;
+  }
+
   async getTopUsers(limit = 10) {
+    limit = this.normalizeLimit(limit, 10);
     const users = await userRepository.listTopUsers(limit);
     return users.map(formatUserEntry);
   }
 
   async getTopTeams(limit = 10) {
+    limit = this.normalizeLimit(limit, 10);
     const teams = await teamRepository.listTopTeams(limit);
     return teams.map(formatTeamEntry);
   }

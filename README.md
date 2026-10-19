@@ -1,6 +1,6 @@
 # Arrakis Intelligence Platform
 
-Arrakis Intelligence Platform is a realtime behavioral intelligence SaaS application for focus tracking, distraction detection, skill progression, roadmap management, analytics, Mentat guidance, team competition, and browser-based storm blocking.
+Arrakis Intelligence Platform is a React and Express application for server-tracked focus sessions, distraction logging, skill progression, roadmap management, analytics, Mentat guidance, team competition, and browser-based storm blocking.
 
 ## Live Deployments
 
@@ -23,32 +23,20 @@ Arrakis includes a Manifest V3 browser extension that provides realtime distract
 
 ### Download
 
-Latest Extension Release:
+The repository's `arrakis-extension.zip` is built from the current `extension/` source. It is not uploaded to GitHub Releases or browser stores automatically; published downloads may lag behind this repository until the existing release process runs.
 
-* https://github.com/Nitesh-N-D/Arrakis-Intelligence-Platform/releases/latest
+### Browser Compatibility
 
-### Browser Support
-
-* Microsoft Edge
-* Google Chrome
-* Brave Browser
-* Opera
-
-### Microsoft Edge Add-ons Store
-
-The Arrakis Intelligence Platform extension has been submitted to the Microsoft Edge Add-ons Store and is currently under review.
-
-The Edge Add-ons listing URL will be added here once approved.
+The extension uses Manifest V3 APIs intended for Chrome and Chromium-based Microsoft Edge. Installation, blocking behavior, restart recovery, and store compatibility have not yet been manually verified in either browser. Brave and Opera are untested and are not claimed as supported.
 
 ### Manual Installation
 
-1. Download the latest extension release.
+1. Extract the repository or download `arrakis-extension.zip` from the current source revision.
 2. Extract the ZIP archive.
 3. Open:
 
    * Edge → `edge://extensions`
    * Chrome → `chrome://extensions`
-   * Brave → `brave://extensions`
 4. Enable **Developer Mode**.
 5. Click **Load unpacked**.
 6. Select the extracted extension folder.
@@ -57,7 +45,7 @@ The Edge Add-ons listing URL will be added here once approved.
 
 * `client/` — React + Vite + Tailwind + Framer Motion + Recharts frontend
 * `server/` — Express clean architecture API with MongoDB, JWT authentication, Google OAuth, Socket.io, and Mentat
-* `extension/` — Manifest V3 browser extension for distraction tracking and blocking
+* `extension/` — Manifest V3 browser extension for hostname-based distraction tracking and local site blocking
 * `docs/` — Setup, deployment, production, and extension guides
 
 ## Core Systems
@@ -96,11 +84,11 @@ Realtime user and team rankings.
 
 ### Profile & Settings
 
-Editable operative identity, preferences, and blocker configuration.
+Editable operative identity and preferences. The extension's block list and enforcement settings are stored locally and are not synchronized from the web app.
 
 ### Browser Blocker
 
-Extension synchronization for blocked sites, strict mode, and timed overrides.
+Hostname tracking and locally configured blocking, strict mode, and timed overrides.
 
 ## Local Development
 
@@ -109,7 +97,7 @@ Extension synchronization for blocked sites, strict mode, and timed overrides.
 ```powershell
 cd server
 copy .env.example .env
-npm install
+npm ci
 npm run dev
 ```
 
@@ -118,7 +106,7 @@ npm run dev
 ```powershell
 cd client
 copy .env.example .env
-npm install
+npm ci
 npm run dev
 ```
 
@@ -148,7 +136,15 @@ docker-compose up --build
 * GOOGLE_SUCCESS_REDIRECT_URL
 * GOOGLE_FAILURE_REDIRECT_URL
 * MENTAT_PROVIDER
-* OPENAI_API_KEY (optional)
+* GEMINI_API_KEY (optional; server only)
+* GEMINI_MODEL (defaults to `gemini-3.5-flash-lite`)
+* GEMINI_TIMEOUT_MS (defaults to 15000)
+* MENTAT_MAX_OUTPUT_TOKENS (defaults to 800)
+* MENTAT_MAX_REQUESTS_PER_USER_DAY (defaults to 20; process-local)
+* MENTAT_MAX_REQUESTS_GLOBAL_DAY (defaults to 1000; process-local)
+* OPENAI_API_KEY and OPENAI_MODEL (optional; existing provider)
+
+Mentat supports `heuristic`, `openai`, and `gemini`. Missing remote keys and provider failures return clearly labeled heuristic guidance. Gemini receives aggregated focus/distraction totals, skill-gap summaries, streak and burnout calculations, plus an optional question limited to 500 characters. These request ceilings are not shared across Render instances; Google's project quota remains authoritative.
 
 ### Client
 
@@ -172,8 +168,18 @@ docker-compose up --build
 
 ```powershell
 cd server
-node -e "import('./src/app.js').then(() => console.log('backend-import-ok'))"
+npm test
+npm run check:import
 ```
+
+Replica-set integration tests are separate from the fast unit suite. They require an isolated MongoDB replica set and a URI whose database name is exactly `arrakis_integration_test`:
+
+```powershell
+$env:MONGODB_TEST_URI = "mongodb://127.0.0.1:27017/arrakis_integration_test?replicaSet=rs0"
+npm run test:integration
+```
+
+Never set `MONGODB_TEST_URI` to production or a database containing user data. The integration suite deletes only the fixture records it creates.
 
 ### Frontend Build Check
 
@@ -186,10 +192,13 @@ npm run build
 
 ```powershell
 node --check extension\background.js
+node --check extension\domainRules.js
 node --check extension\popup.js
 node --check extension\block.js
 node --check extension\content.js
 ```
+
+The CI workflow also checks that `arrakis-extension.zip` contains the same files as `extension/`.
 
 ## Technology Stack
 
@@ -220,7 +229,16 @@ node --check extension\content.js
 
 ## Privacy
 
-Arrakis Intelligence Platform requires user authentication and may process browsing activity, focus sessions, blocked-site activity, and productivity telemetry to provide analytics, distraction detection, and behavioral intelligence features.
+See [PRIVACY.md](PRIVACY.md) for data flow and retention. When Gemini or OpenAI is enabled, aggregated analytics and the submitted question are sent to that provider. Updated extension source transmits hostnames and durations without page titles or full URLs. Previously released extension builds may transmit both, and packaging/publishing is required before existing users receive the source change.
+
+## Known limitations
+
+* API and AI ceilings use process memory and are not shared across server instances.
+* Focus completion uses a MongoDB transaction. Local MongoDB and production MongoDB URIs must connect to a replica set; `docker-compose.yml` initializes a single-node set for development.
+* Extension source changes are included in the tracked `arrakis-extension.zip`; publishing the updated package still requires the existing release process.
+* Extension retries use stored event IDs, a persisted alarm, exponential backoff, an eight-attempt limit, and a 24-hour expiry. Browser integration testing is still required.
+* Chrome/Edge installation, blocking, and service-worker restart recovery were not exercised; manual browser verification is still required.
+* The client uses Tailwind CSS 4, which targets Safari 16.4+, Chrome 111+, and Firefox 128+. The production and full dependency audits are clean.
 
 ## License
 

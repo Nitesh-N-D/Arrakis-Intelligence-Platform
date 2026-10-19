@@ -16,4 +16,12 @@ export class RefreshTokenRepository {
       { new: true }
     );
   }
+
+  consumeValidToken(tokenHash) {
+    return RefreshToken.findOneAndUpdate(
+      { tokenHash, revokedAt: null, expiresAt: { $gt: new Date() } },
+      { $set: { revokedAt: new Date() } },
+      { new: true }
+    ).populate("user");
+  }
 }

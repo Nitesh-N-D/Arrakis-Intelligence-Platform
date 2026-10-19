@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+      - name: Audit server dependencies
+        working-directory: server
+        run: npm audit
+      - name: Run server unit tests
+        working-directory: server
+        run: npm test
+      - name: Start disposable MongoDB replica set
+        run: |
+          docker run -d --name arrakis-test-mongodb -p 27017:27017 mongo:7.0 mongod --replSet rs0 --bind_ip_all
+          for attempt in {1..60}; do
+            if docker exec arrakis-test-mongodb mongosh --quiet --eval 'db.adminCommand("ping").ok' 2>/dev/null | grep -q 1; then break; fi
+            sleep 1
+          done
+          docker exec arrakis-test-mongodb mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]})'
+          for attempt in {1..60}; do
+            if docker exec arrakis-test-mongodb mongosh --quiet --eval 'db.hello().isWritablePrimary' 2>/dev/null | grep -q true; then exit 0; fi
+            sleep 1
+          done
+          echo "MongoDB replica set did not elect a primary" >&2
+          exit 1
+      - name: Run MongoDB replica-set integration tests
+        working-directory: server
+        run: npm run test:integration
+        env:
+          MONGODB_TEST_URI: mongodb://127.0.0.1:27017/arrakis_integration_test?replicaSet=rs0
+      - name: Import backend application
+        working-directory: server
+        run: npm run check:import
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci
+      - name: Audit client dependencies
+        working-directory: client
+        run: npm audit
+      - name: Build frontend
+        working-directory: client
+        run: npm run build
+      - name: Validate extension scripts and manifest
+        working-directory: extension
+        run: |
+          node --check background.js
+          node --check domainRules.js
+          node --check popup.js
+          node --check content.js
+          node --check block.js
+          node -e "JSON.parse(require('fs').readFileSync('manifest.json'))"
+      - name: Validate packaged extension
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import zipfile
+
+          source = pathlib.Path("extension")
+          archive_path = pathlib.Path("arrakis-extension.zip")
+          with zipfile.ZipFile(archive_path) as archive:
+              names = {name for name in archive.namelist() if not name.endswith("/")}
+              manifest = json.loads(archive.read("manifest.json"))
+              assert manifest == json.loads((source / "manifest.json").read_text())
+              source_files = {path.relative_to(source).as_posix() for path in source.rglob("*") if path.is_file()}
+              assert names == source_files, f"Packaged file set differs from source: missing {source_files - names}; extra {names - source_files}"
+              for name in names:
+                  assert archive.read(name) == (source / name).read_bytes(), f"Packaged file is stale: {name}"
+          PY

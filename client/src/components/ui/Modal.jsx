@@ -6,6 +6,7 @@ export default function Modal({ open, title, description, children, onClose }) {
       {open ? (
         <motion.div
           aria-modal="true"
+          aria-labelledby="confirmation-modal-title"
           className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -21,7 +22,7 @@ export default function Modal({ open, title, description, children, onClose }) {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="text-xs uppercase tracking-[0.3em] text-white/45">Confirmation</div>
-            <h2 className="mt-3 font-display text-3xl text-white">{title}</h2>
+            <h2 id="confirmation-modal-title" className="mt-3 font-display text-3xl text-white">{title}</h2>
             {description ? <p className="mt-3 text-sm leading-6 text-white/62">{description}</p> : null}
             <div className="mt-6">{children}</div>
           </motion.div>

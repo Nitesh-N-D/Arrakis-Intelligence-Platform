@@ -148,28 +148,29 @@ export default function ProfilePage() {
               <form className="mt-5 grid gap-4" onSubmit={handleSubmit}>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Name</label>
-                    <input className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
+                    <label htmlFor="profile-name" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Name</label>
+                    <input id="profile-name" autoComplete="name" className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
                   </div>
                   <div>
-                    <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Avatar URL</label>
-                    <input className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" value={form.avatarUrl} onChange={(event) => setForm((current) => ({ ...current, avatarUrl: event.target.value }))} />
+                    <label htmlFor="profile-avatar-url" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Avatar URL</label>
+                    <input id="profile-avatar-url" type="url" className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" value={form.avatarUrl} onChange={(event) => setForm((current) => ({ ...current, avatarUrl: event.target.value }))} />
                   </div>
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Target Role</label>
-                  <input className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" value={form.targetRole} onChange={(event) => setForm((current) => ({ ...current, targetRole: event.target.value }))} />
+                  <label htmlFor="profile-target-role" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Target Role</label>
+                  <input id="profile-target-role" className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" value={form.targetRole} onChange={(event) => setForm((current) => ({ ...current, targetRole: event.target.value }))} />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Bio</label>
-                  <textarea className="focus-ring min-h-28 w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" value={form.bio} onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))} />
+                  <label htmlFor="profile-bio" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Bio</label>
+                  <textarea id="profile-bio" className="focus-ring min-h-28 w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" value={form.bio} onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))} />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Skills</label>
+                  <label htmlFor="profile-skills" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Skills</label>
                   <textarea
+                    id="profile-skills"
                     className="focus-ring min-h-40 w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
                     placeholder="React:4&#10;Node.js:4&#10;System Design:3"
                     value={form.skillsText}

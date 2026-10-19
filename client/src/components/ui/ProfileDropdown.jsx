@@ -10,6 +10,8 @@ export default function ProfileDropdown({ open, operative, onClose, onLogout, on
     <AnimatePresence>
       {open ? (
         <motion.div
+          id="account-menu"
+          role="region"
           aria-label="Account menu"
           className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[18rem] rounded-card border border-border-subtle bg-black/90 p-4 shadow-card backdrop-blur-glass"
           initial={{ opacity: 0, y: -10, scale: 0.98 }}

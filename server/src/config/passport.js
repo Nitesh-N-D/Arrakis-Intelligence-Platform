@@ -7,6 +7,41 @@ const userRepository = new UserRepository();
 
 let configured = false;
 
+export const createGoogleVerifyCallback = (repository = new UserRepository()) => async (_accessToken, _refreshToken, profile, done) => {
+  try {
+    const verifiedEmail = profile.emails?.find((item) => item.verified === true)?.value;
+    const email = verifiedEmail?.trim().toLowerCase();
+    if (!email) {
+      return done(new Error("Google account does not expose a verified email address"));
+    }
+
+    let user = await repository.findByGoogleId(profile.id);
+
+    if (!user) {
+      user = await repository.findByEmail(email);
+    }
+
+    if (!user) {
+      user = await repository.create({
+        name: profile.displayName || email.split("@")[0],
+        email,
+        provider: "google",
+        googleId: profile.id
+      });
+    } else if (user.googleId !== profile.id || user.provider !== "google") {
+      user = await repository.updateById(user.id, {
+        googleId: profile.id,
+        provider: "google",
+        name: user.name || profile.displayName || email.split("@")[0]
+      });
+    }
+
+    return done(null, user);
+  } catch (error) {
+    return done(error);
+  }
+};
+
 export const configurePassport = () => {
   if (configured || !env.googleClientId || !env.googleClientSecret) {
     return passport;
@@ -19,39 +54,7 @@ export const configurePassport = () => {
         clientSecret: env.googleClientSecret,
         callbackURL: env.googleRedirectUri
       },
-      async (_accessToken, _refreshToken, profile, done) => {
-        try {
-          const email = profile.emails?.[0]?.value?.toLowerCase();
-          if (!email) {
-            return done(new Error("Google account does not expose an email address"));
-          }
-
-          let user = await userRepository.findByGoogleId(profile.id);
-
-          if (!user) {
-            user = await userRepository.findByEmail(email);
-          }
-
-          if (!user) {
-            user = await userRepository.create({
-              name: profile.displayName || email.split("@")[0],
-              email,
-              provider: "google",
-              googleId: profile.id
-            });
-          } else if (user.googleId !== profile.id || user.provider !== "google") {
-            user = await userRepository.updateById(user.id, {
-              googleId: profile.id,
-              provider: "google",
-              name: user.name || profile.displayName || email.split("@")[0]
-            });
-          }
-
-          return done(null, user);
-        } catch (error) {
-          return done(error);
-        }
-      }
+      createGoogleVerifyCallback(userRepository)
     )
   );
 

@@ -4,8 +4,6 @@ import { RefreshTokenRepository } from "../repositories/RefreshTokenRepository.j
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
 import { hashOpaqueToken } from "../utils/tokens.js";
 
-const refreshTokenRepository = new RefreshTokenRepository();
-
 const parseDuration = (value) => {
   const amount = Number.parseInt(value, 10);
 
@@ -16,12 +14,16 @@ const parseDuration = (value) => {
 };
 
 export class TokenService {
+  constructor({ refreshTokenRepository = new RefreshTokenRepository() } = {}) {
+    this.refreshTokenRepository = refreshTokenRepository;
+  }
+
   async issueTokens(user, meta = {}) {
     const accessToken = signAccessToken({ sub: user.id, role: user.role });
     const refreshToken = signRefreshToken({ sub: user.id });
     const tokenHash = hashOpaqueToken(refreshToken);
 
-    await refreshTokenRepository.create({
+    await this.refreshTokenRepository.create({
       user: user.id,
       tokenHash,
       expiresAt: new Date(Date.now() + parseDuration(env.jwtRefreshExpiresIn)),
@@ -40,22 +42,16 @@ export class TokenService {
     }
 
     const tokenHash = hashOpaqueToken(token);
-    const record = await refreshTokenRepository.findValidToken(tokenHash);
+    const record = await this.refreshTokenRepository.consumeValidToken(tokenHash);
 
     if (!record) {
       throw new ApiError(401, "Refresh token is invalid or expired");
     }
 
-    if (record.expiresAt < new Date()) {
-      await refreshTokenRepository.revokeToken(tokenHash);
-      throw new ApiError(401, "Refresh token is invalid or expired");
-    }
-
-    await refreshTokenRepository.revokeToken(tokenHash);
     return this.issueTokens(record.user, meta);
   }
 
   revokeRefreshToken(token) {
-    return refreshTokenRepository.revokeToken(hashOpaqueToken(token));
+    return this.refreshTokenRepository.revokeToken(hashOpaqueToken(token));
   }
 }

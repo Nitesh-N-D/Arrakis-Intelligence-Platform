@@ -25,8 +25,8 @@
 
         <div class="glass-card">
           <label class="field-label" for="jwt-token">JWT Access Token</label>
-          <textarea id="jwt-token" class="text-area" rows="4" placeholder="Paste arrakis_access_token"></textarea>
-          <p class="field-help">The extension uses this token for `POST /storm/log`.</p>
+          <input id="jwt-token" class="text-input" type="password" autocomplete="off" placeholder="Connected from the signed-in Arrakis app" />
+          <p class="field-help">A short-lived token is connected from the signed-in Arrakis app. Use this field only for local manual setup.</p>
         </div>
 
         <div class="glass-card">
@@ -68,6 +68,6 @@
       </footer>
     </main>
 
-    <script src="popup.js"></script>
+    <script type="module" src="popup.js"></script>
   </body>
   </html>

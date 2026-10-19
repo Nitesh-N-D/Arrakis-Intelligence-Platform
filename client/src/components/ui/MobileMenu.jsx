@@ -12,6 +12,9 @@ export default function MobileMenu({ open, onClose, sections = [], onNavigate })
           exit={{ opacity: 0 }}
         >
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-menu-title"
             className="glass-panel mx-auto max-w-md px-5 py-5"
             initial={{ y: -16, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -20,7 +23,7 @@ export default function MobileMenu({ open, onClose, sections = [], onNavigate })
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-xs uppercase tracking-[0.34em] text-white/45">Navigation</div>
-                <div className="mt-2 font-display text-2xl text-white">Command menu</div>
+                <div id="mobile-menu-title" className="mt-2 font-display text-2xl text-white">Command menu</div>
               </div>
               <Button onClick={onClose} variant="ghost">
                 Close

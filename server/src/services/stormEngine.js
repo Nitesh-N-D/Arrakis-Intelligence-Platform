@@ -1,5 +1,6 @@
 export class StormEngine {
   evaluate(totalMinutes) {
+    totalMinutes = Number.isFinite(Number(totalMinutes)) ? Math.max(0, Number(totalMinutes)) : 0;
     if (totalMinutes < 60) {
       return {
         stormModeActive: false,

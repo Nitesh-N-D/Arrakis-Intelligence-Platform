@@ -114,6 +114,11 @@ export default function FocusTimerPanel({ timer }) {
               {timer.error}
             </div>
           ) : null}
+          {timer.mode === "completed" && timer.error ? (
+            <button className="mt-3 rounded-xl border border-amber-200/20 bg-amber-200/10 px-4 py-2 text-sm text-amber-100" onClick={timer.retryCompletion}>
+              Retry saving harvest
+            </button>
+          ) : null}
           {timer.harvesting ? <div className="mt-3 text-sm text-white/55">Persisting completed session...</div> : null}
         </div>
       </div>

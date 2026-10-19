@@ -5,11 +5,15 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "dev": "nodemon src/server.js",
+    "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "seed": "node src/seed/seed.js"
+    "seed": "node src/seed/seed.js",
+    "test": "node --test",
+    "test:integration": "node --test --test-concurrency=1 integration/focusTransaction.integration.js integration/profileRoadmap.integration.js integration/refreshToken.integration.js integration/teamMembership.integration.js",
+    "check:import": "node -e \"import('./src/app.js').then(() => console.log('backend-import-ok'))\""
   },
   "dependencies": {
+    "@google/genai": "^2.30.0",
     "axios": "^1.8.4",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
@@ -24,7 +28,10 @@
     "passport-google-oauth20": "^2.0.0",
     "socket.io": "^4.8.1"
   },
+  "overrides": {
+    "qs": "^6.16.1"
+  },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "socket.io-client": "^4.8.4"
   }
 }

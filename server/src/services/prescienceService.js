@@ -1,6 +1,7 @@
 import { DistractionLogRepository } from "../repositories/DistractionLogRepository.js";
 import { FocusSessionRepository } from "../repositories/FocusSessionRepository.js";
 import { OperativeStateService } from "./operativeStateService.js";
+import { fillDailySeries } from "./dailySeries.js";
 
 const focusSessionRepository = new FocusSessionRepository();
 const distractionLogRepository = new DistractionLogRepository();
@@ -10,8 +11,8 @@ export class PrescienceService {
   async analyze(user) {
     const syncedUser = await operativeStateService.syncUserState(user);
     const [focusTrend, distractionTrend] = await Promise.all([
-      focusSessionRepository.aggregateDaily(syncedUser.id, 7),
-      distractionLogRepository.aggregateDaily(syncedUser.id, 7)
+      focusSessionRepository.aggregateDaily(syncedUser.id, 7).then((rows) => fillDailySeries(rows, 7)),
+      distractionLogRepository.aggregateDaily(syncedUser.id, 7).then((rows) => fillDailySeries(rows, 7))
     ]);
 
     const averageFocusMinutes =

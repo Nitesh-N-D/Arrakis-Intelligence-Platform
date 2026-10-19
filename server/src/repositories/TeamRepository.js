@@ -5,46 +5,50 @@ import { User } from "../models/User.js";
 const toObjectId = (value) => new mongoose.Types.ObjectId(value);
 
 export class TeamRepository {
-  create(data) {
+  create(data, options = {}) {
+    if (options.session) {
+      return Team.create([data], options).then(([team]) => team);
+    }
     return Team.create(data);
   }
 
-  findById(id) {
-    return Team.findById(id).populate("members", "name email totalSpice focusStreak currentRank");
+  findById(id, options = {}) {
+    const query = Team.findById(id).populate("members", "name totalSpice focusStreak currentRank");
+    return options.session ? query.session(options.session) : query;
   }
 
-  findByName(name) {
-    return Team.findOne({ name: new RegExp(`^${name}$`, "i") }).populate(
-      "members",
-      "name email totalSpice focusStreak currentRank"
+  findByName(name, options = {}) {
+    const escapedName = String(name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const query = Team.findOne({ name: new RegExp(`^${escapedName}$`, "i") }).populate(
+      "members", "name totalSpice focusStreak currentRank"
     );
+    return options.session ? query.session(options.session) : query;
   }
 
   updateById(id, update) {
     return Team.findByIdAndUpdate(id, update, { new: true }).populate(
-      "members",
-      "name email totalSpice focusStreak currentRank"
+      "members", "name totalSpice focusStreak currentRank"
     );
   }
 
-  async addMember(teamId, userId) {
+  async addMember(teamId, userId, options = {}) {
     await Team.findByIdAndUpdate(teamId, {
       $addToSet: { members: toObjectId(userId) }
-    });
+    }, options.session ? { session: options.session } : {});
 
-    return this.findById(teamId);
+    return this.findById(teamId, options);
   }
 
-  async removeMember(teamId, userId) {
+  async removeMember(teamId, userId, options = {}) {
     if (!teamId) {
       return null;
     }
 
     await Team.findByIdAndUpdate(teamId, {
       $pull: { members: toObjectId(userId) }
-    });
+    }, options.session ? { session: options.session } : {});
 
-    return this.findById(teamId);
+    return this.findById(teamId, options);
   }
 
   listTopTeams(limit = 10) {
@@ -54,8 +58,8 @@ export class TeamRepository {
       .limit(limit);
   }
 
-  async recalculateTotals(teamId) {
-    const [totals] = await User.aggregate([
+  async recalculateTotals(teamId, options = {}) {
+    let aggregation = User.aggregate([
       { $match: { team: toObjectId(teamId) } },
       {
         $group: {
@@ -65,14 +69,18 @@ export class TeamRepository {
         }
       }
     ]);
+    if (options.session) aggregation = aggregation.session(options.session);
 
-    return Team.findByIdAndUpdate(
+    const [totals] = await aggregation;
+    let query = Team.findByIdAndUpdate(
       teamId,
       {
         totalSpice: totals?.totalSpice || 0,
         totalStreak: totals?.totalStreak || 0
       },
-      { new: true }
-    ).populate("members", "name email totalSpice focusStreak currentRank");
+      { new: true, ...(options.session ? { session: options.session } : {}) }
+    ).populate("members", "name totalSpice focusStreak currentRank");
+    if (options.session) query = query.session(options.session);
+    return query;
   }
 }

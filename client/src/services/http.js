@@ -47,6 +47,18 @@ export const subscribeToAccessToken = (listener) => {
   };
 };
 
+export const refreshSession = () => {
+  if (!refreshInFlight) {
+    refreshInFlight = axios
+      .post(`${http.defaults.baseURL}/auth/refresh`, {}, { withCredentials: true })
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+
+  return refreshInFlight;
+};
+
 const normalizeClientError = (error) => {
   if (error?.response?.data) {
     return {
@@ -85,21 +97,10 @@ http.interceptors.response.use(
     const status = error.response?.status;
 
     if (status === 401 && originalRequest && !shouldSkipAuthRefresh(originalRequest)) {
-      if (!refreshInFlight) {
-        refreshInFlight = axios
-          .post(`${http.defaults.baseURL}/auth/refresh`, {}, { withCredentials: true })
-          .then((response) => {
-            const nextToken = response.data?.data?.accessToken || null;
-            setAccessToken(nextToken);
-            return nextToken;
-          })
-          .finally(() => {
-            refreshInFlight = null;
-          });
-      }
-
       try {
-        const nextToken = await refreshInFlight;
+        const response = await refreshSession();
+        const nextToken = response.data?.data?.accessToken || null;
+        setAccessToken(nextToken);
         if (nextToken) {
           originalRequest.__isRetryRequest = true;
           originalRequest.headers = {

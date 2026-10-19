@@ -20,6 +20,25 @@ export function AuthProvider({ children }) {
   }, [accessToken]);
 
   useEffect(() => {
+    const trustedOrigins = ["https://arrakis-intelligence-platform.vercel.app", "http://localhost:5173"];
+    if (!trustedOrigins.includes(window.location.origin)) return undefined;
+    const sendToken = () => {
+      if (sessionState === "authenticated" && accessToken) {
+        window.postMessage({ source: "arrakis-platform", type: "ACCESS_TOKEN_UPDATE", accessToken }, window.location.origin);
+      } else if (sessionState === "anonymous" || sessionState === "expired") {
+        window.postMessage({ source: "arrakis-platform", type: "ACCESS_TOKEN_UPDATE", accessToken: "" }, window.location.origin);
+      }
+    };
+    const onExtensionRequest = (event) => {
+      if (event.source !== window || event.origin !== window.location.origin) return;
+      if (event.data?.source === "arrakis-extension" && event.data?.type === "ACCESS_TOKEN_REQUEST") sendToken();
+    };
+    window.addEventListener("message", onExtensionRequest);
+    sendToken();
+    return () => window.removeEventListener("message", onExtensionRequest);
+  }, [accessToken, sessionState]);
+
+  useEffect(() => {
     const unsubscribe = subscribeToAccessToken((token) => {
       setToken((current) => (current === token ? current : token));
     });

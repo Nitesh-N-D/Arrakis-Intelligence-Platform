@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 
 export default function NotFoundPage() {
@@ -18,11 +17,17 @@ export default function NotFoundPage() {
             The page you requested does not exist or the route has moved.
           </p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link to="/">
-              <Button>Return to dashboard</Button>
+            <Link
+              className="focus-ring inline-flex items-center justify-center rounded-button bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-400 px-4 py-3 text-sm font-semibold text-black"
+              to="/"
+            >
+              Return to dashboard
             </Link>
-            <Link to="/login">
-              <Button variant="secondary">Go to login</Button>
+            <Link
+              className="focus-ring inline-flex items-center justify-center rounded-button border border-border-subtle bg-white/5 px-4 py-3 text-sm font-semibold text-white"
+              to="/login"
+            >
+              Go to login
             </Link>
           </div>
         </Card>

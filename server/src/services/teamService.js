@@ -1,38 +1,51 @@
 import { TeamRepository } from "../repositories/TeamRepository.js";
 import { UserRepository } from "../repositories/UserRepository.js";
 import { ApiError } from "../utils/ApiError.js";
-import { LeaderboardService } from "./leaderboardService.js";
+import mongoose from "mongoose";
 
 const teamRepository = new TeamRepository();
 const userRepository = new UserRepository();
-const leaderboardService = new LeaderboardService();
 
 export class TeamService {
   async createTeam(user, payload) {
-    const name = payload.name?.trim();
-    if (!name) {
-      throw new ApiError(400, "Team name is required");
+    const name = String(payload?.name || "").trim();
+    if (name.length < 2 || name.length > 60) {
+      throw new ApiError(400, "Team name must be between 2 and 60 characters");
     }
 
-    if (user.team) {
-      throw new ApiError(409, "Operative is already assigned to a team");
+    let teamId;
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const currentUser = await userRepository.findById(user.id, { session });
+        if (!currentUser) throw new ApiError(404, "User not found");
+        if (currentUser.team) throw new ApiError(409, "Operative is already assigned to a team");
+
+        const existingTeam = await teamRepository.findByName(name, { session });
+        if (existingTeam) throw new ApiError(409, "A team with this name already exists");
+
+        const team = await teamRepository.create({
+          name,
+          members: [currentUser.id],
+          createdBy: currentUser.id,
+          totalSpice: currentUser.totalSpice,
+          totalStreak: currentUser.focusStreak
+        }, { session });
+        await userRepository.updateById(currentUser.id, { team: team.id }, { session });
+        await teamRepository.recalculateTotals(team.id, { session });
+        teamId = team.id;
+      });
+    } catch (error) {
+      if (error?.code === 11000) throw new ApiError(409, "A team with this name already exists");
+      throw error;
+    } finally {
+      await session.endSession();
     }
 
-    const existingTeam = await teamRepository.findByName(name);
-    if (existingTeam) {
-      throw new ApiError(409, "A team with this name already exists");
-    }
-
-    const team = await teamRepository.create({
-      name,
-      members: [user.id],
-      createdBy: user.id,
-      totalSpice: user.totalSpice,
-      totalStreak: user.focusStreak
-    });
-
-    const updatedUser = await userRepository.updateById(user.id, { team: team.id });
-    const syncedTeam = await leaderboardService.syncTeamTotals(team.id);
+    const [syncedTeam, updatedUser] = await Promise.all([
+      teamRepository.findById(teamId),
+      userRepository.findById(user.id)
+    ]);
 
     return {
       team: syncedTeam,
@@ -41,27 +54,41 @@ export class TeamService {
   }
 
   async joinTeam(user, payload) {
-    const team = payload.teamId
-      ? await teamRepository.findById(payload.teamId)
-      : await teamRepository.findByName(payload.name || "");
+    if (payload?.teamId && !mongoose.isValidObjectId(payload.teamId)) {
+      throw new ApiError(400, "Team ID is invalid");
+    }
+    let teamId;
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const currentUser = await userRepository.findById(user.id, { session });
+        if (!currentUser) throw new ApiError(404, "User not found");
+        const team = payload.teamId
+          ? await teamRepository.findById(payload.teamId, { session })
+          : await teamRepository.findByName(payload.name || "", { session });
+        if (!team) throw new ApiError(404, "Team not found");
 
-    if (!team) {
-      throw new ApiError(404, "Team not found");
+        const currentTeamId = currentUser.team?.id || currentUser.team?.toString?.();
+        if (currentTeamId === team.id) {
+          teamId = team.id;
+          return;
+        }
+
+        if (currentTeamId) await teamRepository.removeMember(currentTeamId, currentUser.id, { session });
+        await userRepository.updateById(currentUser.id, { team: team.id }, { session });
+        await teamRepository.addMember(team.id, currentUser.id, { session });
+        if (currentTeamId) await teamRepository.recalculateTotals(currentTeamId, { session });
+        await teamRepository.recalculateTotals(team.id, { session });
+        teamId = team.id;
+      });
+    } finally {
+      await session.endSession();
     }
 
-    if (user.team?.id === team.id || user.team?.toString?.() === team.id) {
-      return { team, user };
-    }
-
-    if (user.team) {
-      const previousTeamId = user.team.id || user.team;
-      await teamRepository.removeMember(previousTeamId, user.id);
-      await leaderboardService.syncTeamTotals(previousTeamId);
-    }
-
-    await teamRepository.addMember(team.id, user.id);
-    const updatedUser = await userRepository.updateById(user.id, { team: team.id });
-    const syncedTeam = await leaderboardService.syncTeamTotals(team.id);
+    const [syncedTeam, updatedUser] = await Promise.all([
+      teamRepository.findById(teamId),
+      userRepository.findById(user.id)
+    ]);
 
     return {
       team: syncedTeam,

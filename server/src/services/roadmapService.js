@@ -3,13 +3,17 @@ import { UserRepository } from "../repositories/UserRepository.js";
 import { ApiError } from "../utils/ApiError.js";
 import { SkillAnalyzerService } from "./skillAnalyzerService.js";
 
-const roadmapRepository = new RoadmapRepository();
-const userRepository = new UserRepository();
-const skillAnalyzerService = new SkillAnalyzerService();
-
 export class RoadmapService {
+  constructor({
+    roadmapRepository = new RoadmapRepository(),
+    userRepository = new UserRepository(),
+    skillAnalyzerService = new SkillAnalyzerService()
+  } = {}) {
+    Object.assign(this, { roadmapRepository, userRepository, skillAnalyzerService });
+  }
+
   buildRoadmapPhases(user) {
-    const analysis = skillAnalyzerService.analyze({
+    const analysis = this.skillAnalyzerService.analyze({
       userSkills: user.skills,
       targetRole: user.targetRole
     });
@@ -29,7 +33,7 @@ export class RoadmapService {
   }
 
   async ensureRoadmap(user) {
-    let roadmap = await roadmapRepository.findByUser(user.id);
+    let roadmap = await this.roadmapRepository.findByUser(user.id);
 
     if (roadmap && roadmap.targetRole === user.targetRole) {
       return roadmap;
@@ -45,14 +49,14 @@ export class RoadmapService {
     };
 
     if (!roadmap) {
-      return roadmapRepository.create(payload);
+      return this.roadmapRepository.create(payload);
     }
 
     roadmap.targetRole = payload.targetRole;
     roadmap.currentPhaseIndex = payload.currentPhaseIndex;
     roadmap.phases = payload.phases;
     roadmap.generatedFromSkillSnapshot = payload.generatedFromSkillSnapshot;
-    return roadmapRepository.save(roadmap);
+    return this.roadmapRepository.save(roadmap);
   }
 
   async completePhase(user, phaseId) {
@@ -67,6 +71,9 @@ export class RoadmapService {
 
     if (phase.status === "done" || phase.status === "skipped") {
       return roadmap;
+    }
+    if (phase.status !== "active") {
+      throw new ApiError(409, "Only the active roadmap phase can be completed.");
     }
 
     phase.status = "done";
@@ -83,9 +90,9 @@ export class RoadmapService {
       roadmap.phases[nextActiveIndex].startedAt = new Date();
     }
 
-    await roadmapRepository.save(roadmap);
-    await userRepository.replaceSkillLevel(user.id, phase.skill, 4);
+    await this.roadmapRepository.save(roadmap);
+    await this.userRepository.replaceSkillLevel(user.id, phase.skill, 4);
 
-    return roadmapRepository.findByUser(user.id);
+    return this.roadmapRepository.findByUser(user.id);
   }
 }

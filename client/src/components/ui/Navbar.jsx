@@ -60,6 +60,8 @@ export default function Navbar({ operative, onLogout, onMenu, onProfile, onSetti
             <div className="relative" ref={dropdownRef}>
               <button
                 aria-expanded={menuOpen}
+                aria-label={`Open account menu for ${operative?.name || "Operative"}`}
+                aria-controls="account-menu"
                 className="focus-ring flex items-center gap-3 rounded-full border border-border-subtle bg-white/5 px-2 py-2 pr-4 transition hover:border-orange-300/25 hover:bg-white/8"
                 onClick={() => setMenuOpen((current) => !current)}
                 type="button"

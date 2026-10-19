@@ -105,32 +105,32 @@ export default function SettingsPage() {
             <form className="mt-6 grid gap-5" onSubmit={handleSubmit}>
               <div className="grid gap-5 lg:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Focus duration preference</label>
-                  <select className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" value={form.focusDurationPreference} onChange={(event) => setForm((current) => ({ ...current, focusDurationPreference: event.target.value }))}>
+                  <label htmlFor="settings-focus-duration" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Focus duration preference</label>
+                  <select id="settings-focus-duration" className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" value={form.focusDurationPreference} onChange={(event) => setForm((current) => ({ ...current, focusDurationPreference: event.target.value }))}>
                     <option value="25">25 minutes</option>
                     <option value="50">50 minutes</option>
                   </select>
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Storm warning threshold (minutes)</label>
-                  <input className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" min="15" type="number" value={form.stormWarningMinutes} onChange={(event) => setForm((current) => ({ ...current, stormWarningMinutes: event.target.value }))} />
+                  <label htmlFor="settings-storm-threshold" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Storm warning threshold (minutes)</label>
+                  <input id="settings-storm-threshold" className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" min="15" type="number" value={form.stormWarningMinutes} onChange={(event) => setForm((current) => ({ ...current, stormWarningMinutes: event.target.value }))} />
                 </div>
               </div>
 
               <div className="grid gap-5 lg:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Blocked sites</label>
-                  <textarea className="focus-ring min-h-40 w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" placeholder="facebook.com&#10;instagram.com" value={form.blockedSitesText} onChange={(event) => setForm((current) => ({ ...current, blockedSitesText: event.target.value }))} />
+                  <label htmlFor="settings-blocked-sites" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Blocked sites</label>
+                  <textarea id="settings-blocked-sites" className="focus-ring min-h-40 w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" placeholder="facebook.com&#10;instagram.com" value={form.blockedSitesText} onChange={(event) => setForm((current) => ({ ...current, blockedSitesText: event.target.value }))} />
                   <div className="mt-2 text-xs text-white/45">One host per line or separate entries with commas.</div>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Override window (minutes)</label>
-                    <input className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" min="1" type="number" value={form.extensionOverrideMinutes} onChange={(event) => setForm((current) => ({ ...current, extensionOverrideMinutes: event.target.value }))} />
+                    <label htmlFor="settings-override-window" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Override window (minutes)</label>
+                    <input id="settings-override-window" className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" min="1" type="number" value={form.extensionOverrideMinutes} onChange={(event) => setForm((current) => ({ ...current, extensionOverrideMinutes: event.target.value }))} />
                   </div>
                   <div>
-                    <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Theme</label>
-                    <select className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" value={form.theme} onChange={(event) => setForm((current) => ({ ...current, theme: event.target.value }))}>
+                    <label htmlFor="settings-theme" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Theme</label>
+                    <select id="settings-theme" className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" value={form.theme} onChange={(event) => setForm((current) => ({ ...current, theme: event.target.value }))}>
                       <option value="dark">Dark</option>
                       <option value="system">System</option>
                     </select>

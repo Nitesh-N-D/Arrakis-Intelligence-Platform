@@ -74,18 +74,25 @@ export default function LoginPage() {
     >
       <form className="space-y-4" onSubmit={submit}>
         <div>
-          <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Email</label>
+          <label htmlFor="login-email" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Email</label>
           <input
+            id="login-email"
             className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
+            autoComplete="email"
+            required
+            type="email"
             placeholder="operative@arrakis.ai"
             value={form.email}
             onChange={(event) => setForm({ ...form, email: event.target.value })}
           />
         </div>
         <div>
-          <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Password</label>
+          <label htmlFor="login-password" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Password</label>
           <input
+            id="login-password"
             className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
+            autoComplete="current-password"
+            required
             type="password"
             placeholder="Password"
             value={form.password}

@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const distractionLogSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    sourceEventId: { type: String, default: undefined, maxlength: 80 },
     appName: { type: String, required: true, trim: true },
     duration: { type: Number, required: true, min: 1 },
     severity: { type: String, enum: ["low", "medium", "high"], default: "medium" },
@@ -20,5 +21,6 @@ const distractionLogSchema = new mongoose.Schema(
 );
 
 distractionLogSchema.index({ user: 1, loggedAt: -1 });
+distractionLogSchema.index({ user: 1, sourceEventId: 1 }, { unique: true, partialFilterExpression: { sourceEventId: { $type: "string" } } });
 
 export const DistractionLog = mongoose.model("DistractionLog", distractionLogSchema);
