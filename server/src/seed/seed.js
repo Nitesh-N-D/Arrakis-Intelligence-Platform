@@ -1,11 +1,3 @@
-import mongoose from "mongoose";
-import { DistractionLog } from "../models/DistractionLog.js";
-import { FocusSession } from "../models/FocusSession.js";
-import { RefreshToken } from "../models/RefreshToken.js";
-import { RoadmapPlan } from "../models/RoadmapPlan.js";
-import { Team } from "../models/Team.js";
-import { User } from "../models/User.js";
-import { hashPassword } from "../utils/password.js";
 import { assertDestructiveSeedAllowed } from "./seedSafety.js";
 
 const startOfDay = (value) => {
@@ -20,7 +12,27 @@ const seed = async () => {
     mongoUri: process.env.MONGODB_URI || "mongodb://localhost:27017/arrakis-intelligence",
     allowDestructiveSeed: process.env.ARRAKIS_ALLOW_DESTRUCTIVE_SEED
   });
-  const { connectDatabase } = await import("../config/database.js");
+  const [
+    { default: mongoose },
+    { DistractionLog },
+    { FocusSession },
+    { RefreshToken },
+    { RoadmapPlan },
+    { Team },
+    { User },
+    { hashPassword },
+    { connectDatabase }
+  ] = await Promise.all([
+    import("mongoose"),
+    import("../models/DistractionLog.js"),
+    import("../models/FocusSession.js"),
+    import("../models/RefreshToken.js"),
+    import("../models/RoadmapPlan.js"),
+    import("../models/Team.js"),
+    import("../models/User.js"),
+    import("../utils/password.js"),
+    import("../config/database.js")
+  ]);
   await connectDatabase();
 
   await Promise.all([
