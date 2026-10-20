@@ -2,6 +2,8 @@
 
 ## Local Setup
 
+Use Node.js 24.x and npm for both packages.
+
 1. Copy `server/.env.example` to `server/.env`
 2. Copy `client/.env.example` to `client/.env`
 3. Start the local replica set with `docker compose up mongodb`, or configure `MONGODB_URI` to a MongoDB replica set. A standalone `mongod` does not support focus reward transactions.

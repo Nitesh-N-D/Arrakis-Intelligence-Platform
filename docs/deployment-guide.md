@@ -16,8 +16,9 @@ Deploy `client/` to Vercel with:
 
 Deploy `server/` to Render with:
 
-- Build command: `npm install`
-- Start command: `npm start`
+- Runtime: Docker, using `server/Dockerfile` (Node.js 24 LTS)
+- Install command: `npm ci`
+- Start command: `npm start` (the Dockerfile's `CMD`)
 - Environment variables:
   - `NODE_ENV=production`
   - `CLIENT_URL=https://arrakis-intelligence-platform.vercel.app`

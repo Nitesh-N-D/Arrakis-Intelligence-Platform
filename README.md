@@ -92,6 +92,8 @@ Hostname tracking and locally configured blocking, strict mode, and timed overri
 
 ## Local Development
 
+Use Node.js 24.x for both packages. The client and server declare this engine version, and CI uses the same LTS release.
+
 ### Backend
 
 ```powershell
