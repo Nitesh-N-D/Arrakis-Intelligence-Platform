@@ -9,6 +9,7 @@ export default function Navbar({ operative, onLogout, onMenu, onProfile, onSetti
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const dropdownRef = useRef(null);
+  const accountMenuTriggerRef = useRef(null);
 
   useEffect(() => {
     if (!menuOpen) {
@@ -59,6 +60,7 @@ export default function Navbar({ operative, onLogout, onMenu, onProfile, onSetti
 
             <div className="relative" ref={dropdownRef}>
               <button
+                ref={accountMenuTriggerRef}
                 aria-expanded={menuOpen}
                 aria-label={`Open account menu for ${operative?.name || "Operative"}`}
                 aria-controls="account-menu"
@@ -77,7 +79,11 @@ export default function Navbar({ operative, onLogout, onMenu, onProfile, onSetti
                 open={menuOpen}
                 operative={operative}
                 onClose={() => setMenuOpen(false)}
-                onLogout={() => setConfirmLogout(true)}
+                onLogout={() => {
+                  setMenuOpen(false);
+                  accountMenuTriggerRef.current?.focus();
+                  setConfirmLogout(true);
+                }}
                 onProfile={onProfile}
                 onSettings={onSettings}
               />
