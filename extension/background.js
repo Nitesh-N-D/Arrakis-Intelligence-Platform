@@ -94,6 +94,7 @@ async function handleRuntimeMessage(message, sender) {
     case "GET_BLOCK_CONTEXT":
       return handleGetBlockContext(message.payload, sender);
     case "GET_SETTINGS":
+      if (!isExtensionUrl(sender?.url)) return { ok: false, error: "Untrusted extension page" };
       return { ok: true, settings: await getSettings() };
     case "SAVE_SETTINGS":
       return handleSaveSettings(message.payload, sender);
