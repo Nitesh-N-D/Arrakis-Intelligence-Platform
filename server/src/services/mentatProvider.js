@@ -2,16 +2,18 @@ import { GoogleGenAI } from "@google/genai";
 
 export const mentatSchema = {
   type: "object",
+  additionalProperties: false,
   properties: {
     summary: { type: "string" },
-    dailyRecommendations: { type: "array", items: { type: "string" } },
-    warnings: { type: "array", items: { type: "string" } },
+    dailyRecommendations: { type: "array", maxItems: 4, items: { type: "string" } },
+    warnings: { type: "array", maxItems: 4, items: { type: "string" } },
     nextBestAction: { type: "string" },
     focusSchedule: {
       type: "object",
+      additionalProperties: false,
       properties: {
         recommendedStartHour: { type: "string" },
-        recommendedPrimarySession: { type: "integer" },
+        recommendedPrimarySession: { type: "integer", enum: [25, 50] },
         recommendedRecoveryWindow: { type: "string" }
       },
       required: ["recommendedStartHour", "recommendedPrimarySession", "recommendedRecoveryWindow"]

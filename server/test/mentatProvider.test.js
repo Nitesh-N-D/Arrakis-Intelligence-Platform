@@ -29,6 +29,10 @@ const fakeClient = (text) => ({ interactions: { create: async (request, options)
 } } });
 
 test("Gemini accepts and validates structured output", async () => {
+  assert.equal(mentatSchema.additionalProperties, false);
+  assert.deepEqual(mentatSchema.properties.focusSchedule.properties.recommendedPrimarySession.enum, [25, 50]);
+  assert.equal(mentatSchema.properties.dailyRecommendations.maxItems, 4);
+  assert.equal(mentatSchema.properties.warnings.maxItems, 4);
   const result = await generateGemini({ apiKey: "test-key", model: "test-model", timeoutMs: 1000, maxOutputTokens: 800, prompt: "aggregated context", client: fakeClient(JSON.stringify(validOutput)) });
   assert.equal(result.summary, validOutput.summary);
   assert.equal(result.focusSchedule.recommendedPrimarySession, 25);
