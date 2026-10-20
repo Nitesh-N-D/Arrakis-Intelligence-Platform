@@ -2,9 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { assertDestructiveSeedAllowed } from "../src/seed/seedSafety.js";
+import { assertDestructiveSeedAllowed, getSeedFailureMessage } from "../src/seed/seedSafety.js";
 
 const localTarget = "mongodb://127.0.0.1:27017/arrakis-intelligence";
+
+test("seed failure message never includes raw database error details", () => {
+  const message = getSeedFailureMessage(new Error("mongodb://user:secret@127.0.0.1:27017/private"));
+  assert.equal(message, "Demo seed failed. Check local database configuration and try again.");
+  assert.equal(message.includes("secret"), false);
+  assert.equal(message.includes("private"), false);
+  assert.equal(message.includes("mongodb://"), false);
+});
 
 test("destructive demo seeding requires an explicit opt-in", () => {
   assert.throws(

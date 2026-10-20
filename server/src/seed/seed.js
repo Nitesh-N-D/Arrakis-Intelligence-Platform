@@ -1,4 +1,6 @@
-import { assertDestructiveSeedAllowed } from "./seedSafety.js";
+import { assertDestructiveSeedAllowed, getSeedFailureMessage } from "./seedSafety.js";
+
+let mongooseForCleanup = null;
 
 const startOfDay = (value) => {
   const date = new Date(value);
@@ -33,6 +35,7 @@ const seed = async () => {
     import("../utils/password.js"),
     import("../config/database.js")
   ]);
+  mongooseForCleanup = mongoose;
   await connectDatabase();
 
   await Promise.all([
@@ -157,7 +160,7 @@ const seed = async () => {
 };
 
 seed().catch(async (error) => {
-  console.error(error);
-  await mongoose.connection.close();
+  console.error(getSeedFailureMessage(error));
+  await mongooseForCleanup?.connection.close().catch(() => {});
   process.exit(1);
 });
