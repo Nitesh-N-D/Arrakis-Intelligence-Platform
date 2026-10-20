@@ -16,6 +16,11 @@
     cursor: pointer;
   }
 
+  :focus-visible {
+    outline: 2px solid #fbbf24;
+    outline-offset: 3px;
+  }
+
   input::placeholder,
   textarea::placeholder {
     color: var(--color-gray-400);
