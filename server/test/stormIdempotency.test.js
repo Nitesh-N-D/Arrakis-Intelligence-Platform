@@ -37,3 +37,34 @@ test("extension retries with the same source event ID do not double-count", asyn
   assert.equal(retry.stormState.totalMinutes, 5);
   assert.equal(updatedUserCalls, 2);
 });
+
+test("legacy URL and page-title fields are accepted but never persisted", async () => {
+  let stored;
+  const distractionLogRepository = {
+    async createIdempotent(data) {
+      stored = data;
+      return { log: data, duplicate: false };
+    },
+    async aggregateToday() { return [{ totalMinutes: 1 }]; }
+  };
+  const userRepository = { async updateById(id, update) { return { id, ...update }; } };
+  const service = new StormService({ distractionLogRepository, userRepository });
+
+  const result = await service.logDistraction(
+    { id: "operative-1" },
+    {
+      duration: 1,
+      appName: "example.com",
+      url: "https://example.com/path?token=private",
+      pageTitle: "Private page title",
+      metadata: {
+        site: "example.com",
+        url: "https://example.com/metadata?secret=private",
+        pageTitle: "Private metadata title"
+      }
+    }
+  );
+
+  assert.deepEqual(stored.metadata, { device: "desktop", category: "general", source: "manual", site: "example.com" });
+  assert.deepEqual(result.log.metadata, stored.metadata);
+});

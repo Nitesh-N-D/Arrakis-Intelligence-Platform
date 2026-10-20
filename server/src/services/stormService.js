@@ -30,7 +30,6 @@ export class StormService {
     }
 
     const site = String(payload.site || payload.metadata?.site || "").trim().slice(0, 255);
-    const url = String(payload.url || payload.metadata?.url || "").trim().slice(0, 2048);
     const appName = String(payload.appName || site || "Browser").trim().slice(0, 160);
     if (!appName) {
       throw new ApiError(400, "App or site name is required");
@@ -53,9 +52,7 @@ export class StormService {
         device: String(payload.metadata?.device || payload.device || "desktop").slice(0, 40),
         category: String(payload.metadata?.category || payload.category || "general").slice(0, 80),
         source: String(payload.metadata?.source || payload.source || "manual").slice(0, 80),
-        site,
-        url,
-        pageTitle: String(payload.metadata?.pageTitle || payload.pageTitle || "").slice(0, 300)
+        site
       }
     });
 
