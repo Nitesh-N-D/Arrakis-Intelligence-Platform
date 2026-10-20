@@ -1,4 +1,4 @@
-import { http } from "./http";
+import { http, refreshSession } from "./http";
 
 const fallbackApiBase = import.meta.env.PROD
   ? `${window.location.origin}/api/v1`
@@ -8,7 +8,7 @@ const apiBase = import.meta.env.VITE_API_URL || fallbackApiBase;
 export const authService = {
   register: (payload) => http.post("/auth/register", payload),
   login: (payload) => http.post("/auth/login", payload),
-  refresh: () => http.post("/auth/refresh", {}),
+  refresh: () => refreshSession(),
   me: () => http.get("/auth/me"),
   logout: () => http.post("/auth/logout", {}),
   googleUrl: () => http.get("/auth/google/url"),

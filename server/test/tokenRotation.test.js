@@ -1,8 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { TokenService } from "../src/services/tokenService.js";
-import { signRefreshToken } from "../src/utils/jwt.js";
+import { signRefreshToken, verifyRefreshToken } from "../src/utils/jwt.js";
 import { hashOpaqueToken } from "../src/utils/tokens.js";
+
+test("refresh tokens signed for the same subject in one second have unique IDs", () => {
+  const first = signRefreshToken({ sub: "507f1f77bcf86cd799439011" });
+  const second = signRefreshToken({ sub: "507f1f77bcf86cd799439011" });
+
+  assert.notEqual(first, second);
+  assert.notEqual(verifyRefreshToken(first).jti, verifyRefreshToken(second).jti);
+});
 
 test("one refresh token cannot be consumed twice concurrently", async () => {
   const user = { id: "507f1f77bcf86cd799439011", role: "user" };

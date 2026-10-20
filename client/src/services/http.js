@@ -51,6 +51,7 @@ export const refreshSession = () => {
   if (!refreshInFlight) {
     refreshInFlight = axios
       .post(`${http.defaults.baseURL}/auth/refresh`, {}, { withCredentials: true })
+      .then((response) => response.data)
       .finally(() => {
         refreshInFlight = null;
       });
@@ -99,7 +100,7 @@ http.interceptors.response.use(
     if (status === 401 && originalRequest && !shouldSkipAuthRefresh(originalRequest)) {
       try {
         const response = await refreshSession();
-        const nextToken = response.data?.data?.accessToken || null;
+        const nextToken = response.data?.accessToken || null;
         setAccessToken(nextToken);
         if (nextToken) {
           originalRequest.__isRetryRequest = true;
