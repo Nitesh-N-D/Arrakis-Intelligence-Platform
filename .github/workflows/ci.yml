@@ -47,6 +47,8 @@ jobs:
       - name: Import backend application
         working-directory: server
         run: npm run check:import
+      - name: Build Render Docker image
+        run: docker build --file server/Dockerfile --tag arrakis-server:ci server
       - name: Install client dependencies
         working-directory: client
         run: npm ci
