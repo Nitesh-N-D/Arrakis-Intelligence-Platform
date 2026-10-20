@@ -10,6 +10,7 @@ import { connectTestReplicaSet, disconnectTestReplicaSet } from "./mongoReplicaS
 
 let connected = false;
 let userId;
+let comparisonUserId;
 
 before(async () => {
   await connectTestReplicaSet();
@@ -19,9 +20,10 @@ before(async () => {
 
 after(async () => {
   if (!connected) return;
-  if (userId) {
-    await RoadmapPlan.deleteOne({ user: userId });
-    await User.deleteOne({ _id: userId });
+  const fixtureIds = [userId, comparisonUserId].filter(Boolean);
+  if (fixtureIds.length) {
+    await RoadmapPlan.deleteMany({ user: { $in: fixtureIds } });
+    await User.deleteMany({ _id: { $in: fixtureIds } });
   }
   await disconnectTestReplicaSet();
 });
@@ -32,6 +34,13 @@ test("profile and roadmap changes persist to only the integration fixture accoun
     email: `profile-${randomUUID()}@example.test`
   });
   userId = user._id;
+  const comparisonUser = await User.create({
+    name: "Unaffected Operative",
+    email: `profile-other-${randomUUID()}@example.test`,
+    targetRole: "Product Engineering Lead"
+  });
+  comparisonUserId = comparisonUser._id;
+
   const profileService = new ProfileService();
   const profile = await profileService.updateProfile(user.id, {
     name: "After Update",
@@ -52,6 +61,8 @@ test("profile and roadmap changes persist to only the integration fixture accoun
   assert.equal(settings.preferences.stormWarningMinutes, 75);
 
   const roadmapService = new RoadmapService();
+  const comparisonRoadmap = await roadmapService.ensureRoadmap(comparisonUser);
+  const comparisonActivePhaseId = String(comparisonRoadmap.phases.find((phase) => phase.status === "active")._id);
   const roadmap = await roadmapService.ensureRoadmap({
     ...user.toObject(),
     id: user.id,
@@ -68,9 +79,11 @@ test("profile and roadmap changes persist to only the integration fixture accoun
     { id: user.id, skills: profile.skills, targetRole: profile.targetRole },
     String(activePhase._id)
   );
-  const [storedUser, storedRoadmap] = await Promise.all([
+  const [storedUser, storedRoadmap, storedComparisonUser, storedComparisonRoadmap] = await Promise.all([
     User.findById(userId),
-    RoadmapPlan.findOne({ user: userId })
+    RoadmapPlan.findOne({ user: userId }),
+    User.findById(comparisonUserId),
+    RoadmapPlan.findOne({ user: comparisonUserId })
   ]);
   assert.equal(updatedRoadmap.phases[0].status, "done");
   assert.equal(storedRoadmap.phases.find((phase) => String(phase._id) === String(activePhase._id)).status, "done");
@@ -78,4 +91,16 @@ test("profile and roadmap changes persist to only the integration fixture accoun
   assert.equal(storedUser.preferences.strictBlockMode, true);
   assert.equal(storedUser.preferences.stormWarningMinutes, 75);
   assert.deepEqual(storedUser.preferences.blockedSites, ["youtube.com"]);
+  assert.equal(storedComparisonUser.name, "Unaffected Operative");
+  assert.equal(storedComparisonUser.targetRole, "Product Engineering Lead");
+  assert.equal(storedComparisonUser.bio, "");
+  assert.deepEqual(storedComparisonUser.skills, []);
+  assert.equal(storedComparisonUser.preferences.strictBlockMode, false);
+  assert.equal(storedComparisonUser.preferences.stormWarningMinutes, 60);
+  assert.equal(storedComparisonUser.preferences.blockedSites.length, 0);
+  assert.equal(storedComparisonRoadmap.targetRole, "Product Engineering Lead");
+  assert.equal(
+    storedComparisonRoadmap.phases.find((phase) => phase.status === "active")._id.toString(),
+    comparisonActivePhaseId
+  );
 });
