@@ -5,6 +5,20 @@ import { StormEngine } from "./stormEngine.js";
 
 const validSeverities = ["low", "medium", "high"];
 
+const normalizeSiteHostname = (value) => {
+  const rawSite = String(value || "").trim().slice(0, 2048);
+  if (!rawSite) return "";
+
+  try {
+    const candidate = /^[a-z][a-z\d+.-]*:\/\//i.test(rawSite) ? rawSite : `https://${rawSite}`;
+    const parsed = new URL(candidate);
+    if (!["http:", "https:"].includes(parsed.protocol)) return "";
+    return parsed.hostname.toLowerCase().replace(/\.$/, "").slice(0, 255);
+  } catch {
+    return "";
+  }
+};
+
 export class StormService {
   constructor({
     distractionLogRepository = new DistractionLogRepository(),
@@ -29,7 +43,7 @@ export class StormService {
       throw new ApiError(400, "Distraction duration must be between 1 and 1440 minutes");
     }
 
-    const site = String(payload.site || payload.metadata?.site || "").trim().slice(0, 255);
+    const site = normalizeSiteHostname(payload.site || payload.metadata?.site);
     const appName = String(payload.appName || site || "Browser").trim().slice(0, 160);
     if (!appName) {
       throw new ApiError(400, "App or site name is required");

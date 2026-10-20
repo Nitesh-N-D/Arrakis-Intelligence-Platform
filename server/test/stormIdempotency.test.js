@@ -54,17 +54,18 @@ test("legacy URL and page-title fields are accepted but never persisted", async 
     { id: "operative-1" },
     {
       duration: 1,
-      appName: "example.com",
+      site: "https://Example.com/path?token=private",
       url: "https://example.com/path?token=private",
       pageTitle: "Private page title",
       metadata: {
-        site: "example.com",
+        site: "https://example.com/metadata?secret=private",
         url: "https://example.com/metadata?secret=private",
         pageTitle: "Private metadata title"
       }
     }
   );
 
+  assert.equal(stored.appName, "example.com");
   assert.deepEqual(stored.metadata, { device: "desktop", category: "general", source: "manual", site: "example.com" });
   assert.deepEqual(result.log.metadata, stored.metadata);
 });
