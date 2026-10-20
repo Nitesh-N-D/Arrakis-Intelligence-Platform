@@ -1,8 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import app from "../src/app.js";
-import { env } from "../src/config/env.js";
+
+if (!process.env.CLIENT_URL?.trim()) process.env.CLIENT_URL = "https://arrakis.example";
+const [{ default: app }, { env }] = await Promise.all([
+  import("../src/app.js"),
+  import("../src/config/env.js")
+]);
 
 test("Express rejects untrusted CORS origins as a sanitized 403 and serves trusted origins", async (context) => {
   const server = createServer(app);
