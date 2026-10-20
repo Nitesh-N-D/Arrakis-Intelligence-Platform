@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createGoogleVerifyCallback } from "../src/config/passport.js";
+import { createGoogleOAuthStateStore, googleOAuthStateCookie } from "../src/config/googleOAuthStateStore.js";
 
 const runStrategy = (strategy, profile) => new Promise((resolve) => {
   strategy("provider-access-token", "provider-refresh-token", profile, (error, user) => resolve({ error, user }));
@@ -71,4 +72,48 @@ test("Google strategy creates a new account from a verified email", async () => 
     provider: "google",
     googleId: "google-3"
   }]);
+});
+
+test("Google OAuth state is random, short-lived, HttpOnly, and browser-bound", () => {
+  const store = createGoogleOAuthStateStore();
+  const response = {
+    cookies: [],
+    clearedCookies: [],
+    cookie(...args) { this.cookies.push(args); },
+    clearCookie(...args) { this.clearedCookies.push(args); }
+  };
+  const req = { res: response };
+  let state;
+  store.store(req, null, {}, (error, value) => {
+    assert.equal(error, null);
+    state = value;
+  });
+
+  const [cookieName, cookieValue, options] = response.cookies[0];
+  assert.equal(cookieName, googleOAuthStateCookie);
+  assert.equal(cookieValue, state);
+  assert.equal(state.length, 43);
+  assert.equal(options.httpOnly, true);
+  assert.equal(options.sameSite, "lax");
+  assert.equal(options.maxAge, 10 * 60 * 1000);
+  assert.equal(options.path, "/api/v1/auth/google");
+
+  req.cookies = { [googleOAuthStateCookie]: state };
+  let verification;
+  store.verify(req, state, (...args) => { verification = args; });
+  assert.deepEqual(verification, [null, true]);
+  assert.equal(response.clearedCookies[0][0], googleOAuthStateCookie);
+});
+
+test("Google OAuth state rejects missing and mismatched browser cookies", () => {
+  const store = createGoogleOAuthStateStore();
+  const req = { res: { clearCookie() {} }, cookies: { [googleOAuthStateCookie]: "wrong" } };
+  let verification;
+  store.verify(req, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", (...args) => { verification = args; });
+  assert.equal(verification[0], null);
+  assert.equal(verification[1], false);
+
+  delete req.cookies[googleOAuthStateCookie];
+  store.verify(req, undefined, (...args) => { verification = args; });
+  assert.equal(verification[1], false);
 });

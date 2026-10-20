@@ -2,6 +2,7 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { env } from "./env.js";
 import { UserRepository } from "../repositories/UserRepository.js";
+import { createGoogleOAuthStateStore } from "./googleOAuthStateStore.js";
 
 const userRepository = new UserRepository();
 
@@ -52,7 +53,8 @@ export const configurePassport = () => {
       {
         clientID: env.googleClientId,
         clientSecret: env.googleClientSecret,
-        callbackURL: env.googleRedirectUri
+        callbackURL: env.googleRedirectUri,
+        store: createGoogleOAuthStateStore()
       },
       createGoogleVerifyCallback(userRepository)
     )
