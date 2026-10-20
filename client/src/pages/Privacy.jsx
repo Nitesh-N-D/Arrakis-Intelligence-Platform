@@ -55,15 +55,16 @@ const Privacy = () => {
       <h2 className="text-xl font-semibold mt-8 mb-2">Retention and deletion</h2>
       <p className="mb-4">
         Focus sessions, distraction logs, profile, roadmap, and team records
-        remain in the database until you delete your account or an administrator
-        removes them. You can download a JSON export from Settings. Account
+        remain in the database until you delete your account. You can download
+        a JSON export from Settings. Account
         deletion removes your profile, focus and distraction records, roadmap,
         and refresh tokens in one database transaction. It also removes your
         team membership; if you own a team, ownership transfers to its oldest
-        remaining member, and an empty team is removed. Local-password accounts
-        must confirm their password. Google-linked accounts must type a
-        confirmation phrase. Deletion requires authentication from the past
-        five minutes. Refresh-token records also expire automatically.
+        remaining member, and an empty team is removed. Deletion requires your
+        account email and authentication from the past five minutes.
+        Local-password accounts must also confirm their password. Google-linked
+        accounts must also type a confirmation phrase. Refresh-token records
+        also expire automatically.
         This repository does not define a general retention schedule for active
         accounts.
       </p>
