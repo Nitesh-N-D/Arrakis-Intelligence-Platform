@@ -63,7 +63,7 @@ export const generateGemini = async ({ apiKey, model, timeoutMs, maxOutputTokens
     }, {
       timeout_ms: timeoutMs,
       retries: { strategy: "none" },
-      signal: controller.signal
+      fetch_options: { signal: controller.signal }
     });
     const response = await Promise.race([
       request,

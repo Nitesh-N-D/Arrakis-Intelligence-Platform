@@ -44,7 +44,7 @@ test("provider rejects malformed, empty, overlong, and invalid-time output", asy
 test("provider timeout aborts the SDK request", async () => {
   let aborted = false;
   const client = { interactions: { create: (_request, options) => new Promise((_, reject) => {
-    options.signal.addEventListener("abort", () => { aborted = true; reject(Object.assign(new Error("aborted"), { name: "AbortError" })); });
+    options.fetch_options.signal.addEventListener("abort", () => { aborted = true; reject(Object.assign(new Error("aborted"), { name: "AbortError" })); });
   }) } };
   await assert.rejects(generateGemini({ apiKey: "test-key", model: "test-model", timeoutMs: 10, maxOutputTokens: 800, prompt: "context", client }), { code: "ETIMEDOUT" });
   assert.equal(aborted, true);
