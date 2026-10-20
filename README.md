@@ -103,6 +103,14 @@ npm ci
 npm run dev
 ```
 
+The optional demo seed deletes existing data before loading sample accounts. It is disabled unless you explicitly opt in, and it refuses production or non-loopback MongoDB targets. To reset only a local development database, run this from `server/` after confirming `MONGODB_URI` points to your local database:
+
+```powershell
+$env:ARRAKIS_ALLOW_DESTRUCTIVE_SEED = "true"
+npm run seed
+Remove-Item Env:ARRAKIS_ALLOW_DESTRUCTIVE_SEED
+```
+
 ### Frontend
 
 ```powershell

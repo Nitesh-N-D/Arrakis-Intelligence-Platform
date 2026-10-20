@@ -7,6 +7,8 @@ import { RoadmapPlan } from "../models/RoadmapPlan.js";
 import { Team } from "../models/Team.js";
 import { User } from "../models/User.js";
 import { hashPassword } from "../utils/password.js";
+import { env } from "../config/env.js";
+import { assertDestructiveSeedAllowed } from "./seedSafety.js";
 
 const startOfDay = (value) => {
   const date = new Date(value);
@@ -15,6 +17,11 @@ const startOfDay = (value) => {
 };
 
 const seed = async () => {
+  assertDestructiveSeedAllowed({
+    nodeEnv: env.nodeEnv,
+    mongoUri: env.mongoUri,
+    allowDestructiveSeed: process.env.ARRAKIS_ALLOW_DESTRUCTIVE_SEED
+  });
   await connectDatabase();
 
   await Promise.all([
