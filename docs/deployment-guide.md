@@ -7,7 +7,7 @@ Deploy `client/` to Vercel with:
 - Build command: `npm run build`
 - Output directory: `dist`
 
-`client/vercel.json` runs the build during deployment and regenerates `dist`. The repository tracks selected static files under `client/dist`; Vercel's configured build command produces the bundled assets for each deployment.
+`client/vercel.json` runs the build during deployment and regenerates `dist`. The build output is ignored and is not committed; static files and the Google site-verification metadata are maintained in `client/public/` and `client/index.html` respectively. Vercel must run the configured build command before serving `dist`.
 - Environment variables:
   - `VITE_API_URL=https://arrakis-intelligence-platform.onrender.com/api/v1`
   - `VITE_SOCKET_URL=https://arrakis-intelligence-platform.onrender.com`
