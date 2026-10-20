@@ -5,6 +5,7 @@ import { FocusService } from "../src/services/focusService.js";
 import { OperativeStateService } from "../src/services/operativeStateService.js";
 import { SpiceEngine } from "../src/services/spiceEngine.js";
 import { StormEngine } from "../src/services/stormEngine.js";
+import { SkillAnalyzerService } from "../src/services/skillAnalyzerService.js";
 
 test("focus reward tiers and duration validation stay bounded", () => {
   const spice = new SpiceEngine();
@@ -34,4 +35,24 @@ test("daily trends include empty days and UTC dates", () => {
   assert.deepEqual(result.map((row) => row._id), ["2026-03-08", "2026-03-09", "2026-03-10"]);
   assert.equal(result[0].totalMinutes, 0);
   assert.equal(result[1].totalMinutes, 12);
+});
+
+test("skill analysis accepts valid profiles and rejects malformed or inherited role input", () => {
+  const analyzer = new SkillAnalyzerService();
+  const result = analyzer.analyze({
+    targetRole: "AI Systems Engineer",
+    userSkills: [{ name: "Node.js", level: 3 }]
+  });
+  assert.equal(result.weightedSkillScores.find((skill) => skill.name === "Node.js").currentLevel, 3);
+  assert.throws(() => analyzer.analyze({ targetRole: "toString", userSkills: [] }), { statusCode: 400 });
+  assert.throws(() => analyzer.analyze({ targetRole: "__proto__", userSkills: [] }), { statusCode: 400 });
+  assert.throws(() => analyzer.analyze({ targetRole: "AI Systems Engineer", userSkills: "Node.js" }), { statusCode: 400 });
+  assert.throws(() => analyzer.analyze({
+    targetRole: "AI Systems Engineer",
+    userSkills: [{ name: "Node.js", level: 6 }]
+  }), { statusCode: 400 });
+  assert.throws(() => analyzer.analyze({
+    targetRole: "AI Systems Engineer",
+    userSkills: Array.from({ length: 101 }, (_, index) => ({ name: `Skill ${index}`, level: 1 }))
+  }), { statusCode: 400 });
 });
