@@ -10,6 +10,13 @@ export default function Navbar({ operative, onLogout, onMenu, onProfile, onSetti
   const [confirmLogout, setConfirmLogout] = useState(false);
   const dropdownRef = useRef(null);
   const accountMenuTriggerRef = useRef(null);
+  const operativeName = operative?.name || "Operative";
+  const operativeInitials = operativeName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "OP";
 
   useEffect(() => {
     if (!menuOpen) {
@@ -62,16 +69,17 @@ export default function Navbar({ operative, onLogout, onMenu, onProfile, onSetti
               <button
                 ref={accountMenuTriggerRef}
                 aria-expanded={menuOpen}
-                aria-label={`Open account menu for ${operative?.name || "Operative"}`}
                 aria-controls="account-menu"
                 className="focus-ring flex items-center gap-3 rounded-full border border-border-subtle bg-white/5 px-2 py-2 pr-4 transition hover:border-orange-300/25 hover:bg-white/8"
                 onClick={() => setMenuOpen((current) => !current)}
                 type="button"
               >
-                <UserAvatar avatarUrl={operative?.avatarUrl} name={operative?.name} className="h-10 w-10" />
-                <div className="hidden text-left sm:block">
+                <span aria-hidden="true">
+                  <UserAvatar avatarUrl={operative?.avatarUrl} name={operativeName} className="h-10 w-10" />
+                </span>
+                <span className="sr-only">{operativeInitials} {operativeName} account menu</span>
+                <div aria-hidden="true" className="hidden text-left sm:block">
                   <div className="text-sm font-semibold text-white">{operative?.name || "Operative"}</div>
-                  <div className="text-xs uppercase tracking-[0.22em] text-white/45">Account</div>
                 </div>
               </button>
 
