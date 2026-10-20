@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { connectDatabase } from "../config/database.js";
 import { DistractionLog } from "../models/DistractionLog.js";
 import { FocusSession } from "../models/FocusSession.js";
 import { RefreshToken } from "../models/RefreshToken.js";
@@ -7,7 +6,6 @@ import { RoadmapPlan } from "../models/RoadmapPlan.js";
 import { Team } from "../models/Team.js";
 import { User } from "../models/User.js";
 import { hashPassword } from "../utils/password.js";
-import { env } from "../config/env.js";
 import { assertDestructiveSeedAllowed } from "./seedSafety.js";
 
 const startOfDay = (value) => {
@@ -18,10 +16,11 @@ const startOfDay = (value) => {
 
 const seed = async () => {
   assertDestructiveSeedAllowed({
-    nodeEnv: env.nodeEnv,
-    mongoUri: env.mongoUri,
+    nodeEnv: process.env.NODE_ENV || "development",
+    mongoUri: process.env.MONGODB_URI || "mongodb://localhost:27017/arrakis-intelligence",
     allowDestructiveSeed: process.env.ARRAKIS_ALLOW_DESTRUCTIVE_SEED
   });
+  const { connectDatabase } = await import("../config/database.js");
   await connectDatabase();
 
   await Promise.all([
