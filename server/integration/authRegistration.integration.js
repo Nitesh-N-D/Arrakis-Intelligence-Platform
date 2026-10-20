@@ -29,10 +29,17 @@ test("concurrent registrations for one email create one account and return one 4
   const bothReadsComplete = new Promise((resolve) => { releaseReads = resolve; });
   const userRepository = {
     async findByEmail(value) {
-      const user = await User.findOne({ email: value });
+      let user;
+      let queryError;
+      try {
+        user = await User.findOne({ email: value });
+      } catch (error) {
+        queryError = error;
+      }
       reads += 1;
       if (reads === 2) releaseReads();
       await bothReadsComplete;
+      if (queryError) throw queryError;
       return user;
     },
     create(data) { return User.create(data); }
