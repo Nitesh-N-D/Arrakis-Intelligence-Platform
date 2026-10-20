@@ -1,7 +1,6 @@
 import { ApiError } from "../utils/ApiError.js";
 import { env } from "../config/env.js";
-
-const buckets = new Map();
+import { RateLimitBucketRepository } from "../repositories/RateLimitBucketRepository.js";
 
 const createBucket = (windowMs, now) => ({
   count: 0,
@@ -12,38 +11,15 @@ const getBucketKey = (req) => {
   return req.ip || req.socket?.remoteAddress || "anonymous";
 };
 
-const cleanupBuckets = () => {
-  const now = Date.now();
-  for (const [key, bucket] of buckets.entries()) {
-    if (bucket.resetAt <= now) {
-      buckets.delete(key);
-    }
-  }
-};
-
-setInterval(cleanupBuckets, Math.max(30_000, Math.round(env.rateLimitWindowMs / 2))).unref();
-
 export const createRateLimitMiddleware = (
   options = {},
-  { bucketStore = new Map(), clock = Date.now } = {}
+  { bucketStore, durableStore, clock = Date.now } = {}
 ) => {
   const windowMs = options.windowMs ?? env.rateLimitWindowMs;
   const max = options.max ?? env.rateLimitMax;
+  const localStore = bucketStore || new Map();
 
-  return (req, res, next) => {
-    const identity = options.byUser && req.user?.id ? `user:${req.user.id}` : getBucketKey(req);
-    const key = `${options.namespace || "global"}:${identity}`;
-    const now = clock();
-    const existingBucket = bucketStore.get(key);
-    const bucket =
-      !existingBucket || existingBucket.resetAt <= now
-        ? createBucket(windowMs, now)
-        : existingBucket;
-
-    bucket.count += 1;
-    bucket.resetAt = bucket.resetAt || now + windowMs;
-    bucketStore.set(key, bucket);
-
+  const applyLimit = (bucket, res, next) => {
     res.setHeader("X-RateLimit-Limit", String(max));
     res.setHeader("X-RateLimit-Remaining", String(Math.max(0, max - bucket.count)));
     res.setHeader("X-RateLimit-Reset", String(Math.ceil(bucket.resetAt / 1000)));
@@ -59,7 +35,29 @@ export const createRateLimitMiddleware = (
 
     return next();
   };
+
+  return (req, res, next) => {
+    const identity = options.byUser && req.user?.id ? `user:${req.user.id}` : getBucketKey(req);
+    const key = `${options.namespace || "global"}:${identity}`;
+    const now = clock();
+    if (durableStore) {
+      void durableStore.consume(key, { windowMs, now })
+        .then((bucket) => applyLimit(bucket, res, next))
+        .catch(() => next(new ApiError(503, "Rate limiting is temporarily unavailable. Try again shortly.")));
+      return;
+    }
+
+    const existingBucket = localStore.get(key);
+    const bucket = !existingBucket || existingBucket.resetAt <= now
+      ? createBucket(windowMs, now)
+      : existingBucket;
+    bucket.count += 1;
+    localStore.set(key, bucket);
+    return applyLimit(bucket, res, next);
+  };
 };
 
+const durableStore = new RateLimitBucketRepository();
+
 export const rateLimitMiddleware = (options = {}) =>
-  createRateLimitMiddleware(options, { bucketStore: buckets });
+  createRateLimitMiddleware(options, { durableStore });

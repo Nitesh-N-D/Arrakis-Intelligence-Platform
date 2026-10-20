@@ -70,3 +70,30 @@ test("expired buckets start a new fixed window", async () => {
   assert.equal((await callMiddleware(middleware, req)).error, null);
   assert.equal(bucketStore.get("auth:203.0.113.9").count, 1);
 });
+
+test("multiple middleware instances share an injected durable limiter and fail closed when it is unavailable", async () => {
+  const buckets = new Map();
+  const durableStore = {
+    async consume(key, { windowMs, now }) {
+      const current = buckets.get(key);
+      const bucket = !current || current.resetAt <= now
+        ? { count: 0, resetAt: now + windowMs }
+        : current;
+      bucket.count += 1;
+      buckets.set(key, bucket);
+      return bucket;
+    }
+  };
+  const options = { namespace: "shared", max: 1, windowMs: 10_000 };
+  const firstWorker = createRateLimitMiddleware(options, { durableStore, clock: () => 1_000 });
+  const secondWorker = createRateLimitMiddleware(options, { durableStore, clock: () => 1_000 });
+  const request = { ip: "203.0.113.11", headers: {} };
+
+  assert.equal((await callMiddleware(firstWorker, request)).error, null);
+  assert.equal((await callMiddleware(secondWorker, request)).error.statusCode, 429);
+
+  const unavailable = createRateLimitMiddleware(options, {
+    durableStore: { consume: async () => { throw new Error("database unavailable"); } }
+  });
+  assert.equal((await callMiddleware(unavailable, request)).error.statusCode, 503);
+});

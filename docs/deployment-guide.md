@@ -11,7 +11,6 @@ Deploy `client/` to Vercel with:
 - Environment variables:
   - `VITE_API_URL=https://arrakis-intelligence-platform.onrender.com/api/v1`
   - `VITE_SOCKET_URL=https://arrakis-intelligence-platform.onrender.com`
-  - `VITE_APP_URL=https://arrakis-intelligence-platform.vercel.app`
 
 ## Backend
 

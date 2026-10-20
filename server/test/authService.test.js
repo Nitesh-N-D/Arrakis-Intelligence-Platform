@@ -38,3 +38,18 @@ test("registration rejects malformed email, unsupported roles, and bcrypt-trunca
   await assert.rejects(malformed.register({ name: "Valid Name", email: "valid@example.com", password: "12345678", targetRole: "Unlisted role" }), { statusCode: 400 });
   await assert.rejects(malformed.register({ name: "Valid Name", email: "valid@example.com", password: "x".repeat(73) }), { statusCode: 400 });
 });
+
+test("registration maps a concurrent unique-email insert collision to the existing-account response", async () => {
+  const service = new AuthService({
+    userRepository: {
+      async findByEmail() { return null; },
+      async create() { throw Object.assign(new Error("duplicate key"), { code: 11000, keyPattern: { email: 1 } }); }
+    },
+    tokenService: { async issueTokens() { throw new Error("tokens must not be issued"); } }
+  });
+
+  await assert.rejects(
+    service.register({ name: "Valid Name", email: "race@example.com", password: "valid password", targetRole: "AI Systems Engineer" }),
+    { statusCode: 409, message: "A user with this email already exists" }
+  );
+});

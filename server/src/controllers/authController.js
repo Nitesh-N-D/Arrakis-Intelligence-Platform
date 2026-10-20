@@ -25,6 +25,7 @@ const serializeUser = (user) => ({
   id: user.id,
   name: user.name,
   email: user.email,
+  provider: user.provider,
   role: user.role,
   avatarUrl: user.avatarUrl || "",
   bio: user.bio || "",

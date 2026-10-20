@@ -15,6 +15,7 @@ export const createProtect = ({
     }
 
     const payload = verifyToken(token);
+    req.authTime = new Date(Number(payload.authTime || payload.iat) * 1000);
     const user = await userRepository.findById(payload.sub);
 
     if (!user) {

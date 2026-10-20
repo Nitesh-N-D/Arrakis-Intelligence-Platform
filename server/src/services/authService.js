@@ -70,14 +70,22 @@ export class AuthService {
     }
 
     const passwordHash = await hashPassword(password);
-    const user = await this.userRepository.create({
-      name,
-      email,
-      provider: "local",
-      passwordHash,
-      targetRole,
-      skills: normalizeSkills(payload.skills)
-    });
+    let user;
+    try {
+      user = await this.userRepository.create({
+        name,
+        email,
+        provider: "local",
+        passwordHash,
+        targetRole,
+        skills: normalizeSkills(payload.skills)
+      });
+    } catch (error) {
+      if (error?.code === 11000) {
+        throw new ApiError(409, "A user with this email already exists");
+      }
+      throw error;
+    }
 
     const tokens = await this.tokenService.issueTokens(user, meta);
     return { user, ...tokens };

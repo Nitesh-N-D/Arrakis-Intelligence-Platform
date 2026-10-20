@@ -21,5 +21,7 @@ export const platformService = {
   joinTeam: (payload) => http.post("/team/join", payload),
   profile: () => http.get("/profile"),
   updateProfile: (payload) => http.patch("/profile", payload),
-  updateSettings: (payload) => http.patch("/profile/settings", payload)
+  updateSettings: (payload) => http.patch("/profile/settings", payload),
+  exportAccount: () => http.get("/profile/export"),
+  deleteAccount: (payload) => http.delete("/profile/account", { data: payload })
 };

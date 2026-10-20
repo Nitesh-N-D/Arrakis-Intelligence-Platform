@@ -27,7 +27,7 @@ The repository's `arrakis-extension.zip` is built from the current `extension/` 
 
 ### Browser Compatibility
 
-The extension uses Manifest V3 APIs intended for Chrome and Chromium-based Microsoft Edge. Installation, blocking behavior, restart recovery, and store compatibility have not yet been manually verified in either browser. Brave and Opera are untested and are not claimed as supported.
+The extension uses Manifest V3 APIs intended for Chrome and Chromium-based Microsoft Edge. Playwright automation has verified blocking behavior in bundled Chromium and Microsoft Edge, including popup settings persistence, strict blocking, hidden destination URLs, and Edge extension-worker restart recovery. Chromium coverage also checks timed overrides, context expiry, and pending-sync alarms. Manual installation and store compatibility have not been verified. Browser-store approval, Brave, and Opera are not claimed.
 
 ### Manual Installation
 
@@ -140,17 +140,16 @@ docker-compose up --build
 * GEMINI_MODEL (defaults to `gemini-3.5-flash-lite`)
 * GEMINI_TIMEOUT_MS (defaults to 15000)
 * MENTAT_MAX_OUTPUT_TOKENS (defaults to 800)
-* MENTAT_MAX_REQUESTS_PER_USER_DAY (defaults to 20; process-local)
-* MENTAT_MAX_REQUESTS_GLOBAL_DAY (defaults to 1000; process-local)
+* MENTAT_MAX_REQUESTS_PER_USER_DAY (defaults to 20; stored in shared MongoDB)
+* MENTAT_MAX_REQUESTS_GLOBAL_DAY (defaults to 1000; stored in shared MongoDB)
 * OPENAI_API_KEY and OPENAI_MODEL (optional; existing provider)
 
-Mentat supports `heuristic`, `openai`, and `gemini`. Missing remote keys and provider failures return clearly labeled heuristic guidance. Gemini receives aggregated focus/distraction totals, skill-gap summaries, streak and burnout calculations, plus an optional question limited to 500 characters. These request ceilings are not shared across Render instances; Google's project quota remains authoritative.
+Mentat supports `heuristic`, `openai`, and `gemini`. Missing remote keys and provider failures return clearly labeled heuristic guidance. Gemini receives aggregated focus/distraction totals, skill-gap summaries, streak and burnout calculations, plus an optional question limited to 500 characters. AI daily budgets and API request limits use atomic MongoDB counters shared across server instances. Google's project quota remains authoritative.
 
 ### Client
 
 * VITE_API_URL
 * VITE_SOCKET_URL
-* VITE_APP_URL
 
 ## Production Notes
 
@@ -180,6 +179,13 @@ npm run test:integration
 ```
 
 Never set `MONGODB_TEST_URI` to production or a database containing user data. The integration suite deletes only the fixture records it creates.
+
+The client uses Node's built-in test runner for socket recovery behavior:
+
+```powershell
+cd client
+npm test
+```
 
 ### Frontend Build Check
 
@@ -231,13 +237,15 @@ The CI workflow also checks that `arrakis-extension.zip` contains the same files
 
 See [PRIVACY.md](PRIVACY.md) for data flow and retention. When Gemini or OpenAI is enabled, aggregated analytics and the submitted question are sent to that provider. Updated extension source transmits hostnames and durations without page titles or full URLs. Previously released extension builds may transmit both, and packaging/publishing is required before existing users receive the source change.
 
+Users can export their profile, focus-session history, distraction records, and roadmap as JSON from Settings. Account deletion requires a recently authenticated session and identity confirmation; local-password accounts must also confirm their password. Deletion transactionally removes personal records and refresh tokens, removes team membership, and transfers team ownership to the oldest remaining member (or removes an empty team). There is no general retention scheduler for active accounts.
+
 ## Known limitations
 
-* API and AI ceilings use process memory and are not shared across server instances.
+* API and AI request ceilings use MongoDB. Requests that require rate limiting return 503 while the database is unavailable.
 * Focus completion uses a MongoDB transaction. Local MongoDB and production MongoDB URIs must connect to a replica set; `docker-compose.yml` initializes a single-node set for development.
 * Extension source changes are included in the tracked `arrakis-extension.zip`; publishing the updated package still requires the existing release process.
-* Extension retries use stored event IDs, a persisted alarm, exponential backoff, an eight-attempt limit, and a 24-hour expiry. Browser integration testing is still required.
-* Chrome/Edge installation, blocking, and service-worker restart recovery were not exercised; manual browser verification is still required.
+* Extension retries use stored event IDs, a persisted alarm, exponential backoff, an eight-attempt limit, and a 24-hour expiry. Unpacked Chromium and Edge automation passed; manual installation, publishing, and store compatibility still need owner verification.
+* Extension account-token handoff and logout/account-switch behavior have not been exercised end to end in real Chrome and Edge profiles.
 * The client uses Tailwind CSS 4, which targets Safari 16.4+, Chrome 111+, and Firefox 128+. The production and full dependency audits are clean.
 
 ## License

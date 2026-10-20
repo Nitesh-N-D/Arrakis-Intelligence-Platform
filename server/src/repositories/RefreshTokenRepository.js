@@ -5,6 +5,10 @@ export class RefreshTokenRepository {
     return RefreshToken.create(data);
   }
 
+  deleteByUserId(userId, options = {}) {
+    return RefreshToken.deleteMany({ user: userId }, options);
+  }
+
   findValidToken(tokenHash) {
     return RefreshToken.findOne({ tokenHash, revokedAt: null }).populate("user");
   }

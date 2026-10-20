@@ -53,6 +53,9 @@ jobs:
       - name: Audit client dependencies
         working-directory: client
         run: npm audit
+      - name: Run client unit tests
+        working-directory: client
+        run: npm test
       - name: Build frontend
         working-directory: client
         run: npm run build

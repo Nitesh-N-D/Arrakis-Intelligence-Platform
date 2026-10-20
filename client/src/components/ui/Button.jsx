@@ -6,7 +6,8 @@ const variants = {
     "bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-400 text-black shadow-glow hover:brightness-105",
   secondary:
     "border border-border-subtle bg-white/5 text-white hover:border-orange-300/30 hover:bg-white/8",
-  ghost: "border border-transparent bg-transparent text-white/72 hover:bg-white/5 hover:text-white"
+  ghost: "border border-transparent bg-transparent text-white/72 hover:bg-white/5 hover:text-white",
+  danger: "border border-red-300/25 bg-red-500/12 text-red-100 hover:bg-red-500/20"
 };
 
 export default function Button({

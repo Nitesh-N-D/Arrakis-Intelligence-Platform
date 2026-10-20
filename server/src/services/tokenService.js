@@ -18,15 +18,21 @@ export class TokenService {
     this.refreshTokenRepository = refreshTokenRepository;
   }
 
-  async issueTokens(user, meta = {}) {
-    const accessToken = signAccessToken({ sub: user.id, role: user.role });
-    const refreshToken = signRefreshToken({ sub: user.id });
+  async issueTokens(user, meta = {}, authenticatedAt = new Date()) {
+    const authTime = authenticatedAt instanceof Date ? authenticatedAt : new Date(authenticatedAt);
+    const accessToken = signAccessToken({
+      sub: user.id,
+      role: user.role,
+      authTime: Math.floor(authTime.getTime() / 1000)
+    });
+    const refreshToken = signRefreshToken({ sub: user.id, authTime: Math.floor(authTime.getTime() / 1000) });
     const tokenHash = hashOpaqueToken(refreshToken);
 
     await this.refreshTokenRepository.create({
       user: user.id,
       tokenHash,
       expiresAt: new Date(Date.now() + parseDuration(env.jwtRefreshExpiresIn)),
+      authTime,
       userAgent: meta.userAgent || "",
       ipAddress: meta.ipAddress || ""
     });
@@ -35,8 +41,9 @@ export class TokenService {
   }
 
   async rotateRefreshToken(token, meta = {}) {
+    let refreshPayload;
     try {
-      verifyRefreshToken(token);
+      refreshPayload = verifyRefreshToken(token);
     } catch (_error) {
       throw new ApiError(401, "Refresh token is invalid or expired");
     }
@@ -48,7 +55,10 @@ export class TokenService {
       throw new ApiError(401, "Refresh token is invalid or expired");
     }
 
-    return this.issueTokens(record.user, meta);
+    const originalAuthTime = record.authTime || (refreshPayload.authTime
+      ? new Date(refreshPayload.authTime * 1000)
+      : record.createdAt || new Date());
+    return this.issueTokens(record.user, meta, originalAuthTime);
   }
 
   revokeRefreshToken(token) {

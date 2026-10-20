@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { TokenService } from "../src/services/tokenService.js";
-import { signRefreshToken, verifyRefreshToken } from "../src/utils/jwt.js";
+import { signRefreshToken, verifyAccessToken, verifyRefreshToken } from "../src/utils/jwt.js";
 import { hashOpaqueToken } from "../src/utils/tokens.js";
 
 test("refresh tokens signed for the same subject in one second have unique IDs", () => {
@@ -40,4 +40,26 @@ test("one refresh token cannot be consumed twice concurrently", async () => {
   assert.equal(issued, 1);
   assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
   assert.equal(results.filter((result) => result.status === "rejected" && result.reason.statusCode === 401).length, 1);
+});
+
+test("refresh rotation preserves the original authentication time for step-up checks", async () => {
+  const user = { id: "507f1f77bcf86cd799439012", role: "user" };
+  const records = new Map();
+  const repository = {
+    async create(record) { records.set(record.tokenHash, { ...record, user }); },
+    async consumeValidToken(tokenHash) {
+      const record = records.get(tokenHash);
+      if (!record) return null;
+      records.delete(tokenHash);
+      return record;
+    },
+    async revokeToken(tokenHash) { records.delete(tokenHash); }
+  };
+  const service = new TokenService({ refreshTokenRepository: repository });
+  const originalAuthTime = new Date(Date.now() - 60 * 60 * 1000);
+  const issued = await service.issueTokens(user, {}, originalAuthTime);
+  const rotated = await service.rotateRefreshToken(issued.refreshToken);
+
+  assert.equal(verifyAccessToken(issued.accessToken).authTime, Math.floor(originalAuthTime.getTime() / 1000));
+  assert.equal(verifyAccessToken(rotated.accessToken).authTime, Math.floor(originalAuthTime.getTime() / 1000));
 });

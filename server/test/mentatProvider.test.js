@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateGemini, getRetryAfterMs, isRetryableGeminiError, mentatSchema, validateMentatOutput } from "../src/services/mentatProvider.js";
-import { createFallbackInsight, MentatService } from "../src/services/mentatService.js";
+import { createFallbackInsight, createMentatBudgetCheck, MentatService } from "../src/services/mentatService.js";
 
 const validOutput = {
   summary: "Your focus was steady this week.",
@@ -15,13 +15,17 @@ const validOutput = {
   }
 };
 
-const fakeClient = (text) => ({ models: { generateContent: async (request) => {
+const fakeClient = (text) => ({ interactions: { create: async (request, options) => {
   assert.equal(request.model, "test-model");
-  assert.equal(request.config.responseMimeType, "application/json");
-  assert.equal(request.config.responseSchema, mentatSchema);
-  assert.equal(typeof request.config.systemInstruction, "string");
-  assert.equal(request.config.maxOutputTokens, 800);
-  return { text };
+  assert.equal(request.response_format.type, "text");
+  assert.equal(request.response_format.mime_type, "application/json");
+  assert.equal(request.response_format.schema, mentatSchema);
+  assert.equal(typeof request.system_instruction, "string");
+  assert.equal(request.generation_config.max_output_tokens, 800);
+  assert.equal(request.store, false);
+  assert.equal(options.timeout_ms, 1000);
+  assert.equal(options.retries.strategy, "none");
+  return { output_text: text };
 } } });
 
 test("Gemini accepts and validates structured output", async () => {
@@ -39,8 +43,8 @@ test("provider rejects malformed, empty, overlong, and invalid-time output", asy
 
 test("provider timeout aborts the SDK request", async () => {
   let aborted = false;
-  const client = { models: { generateContent: ({ config }) => new Promise((_, reject) => {
-    config.abortSignal.addEventListener("abort", () => { aborted = true; reject(Object.assign(new Error("aborted"), { name: "AbortError" })); });
+  const client = { interactions: { create: (_request, options) => new Promise((_, reject) => {
+    options.signal.addEventListener("abort", () => { aborted = true; reject(Object.assign(new Error("aborted"), { name: "AbortError" })); });
   }) } };
   await assert.rejects(generateGemini({ apiKey: "test-key", model: "test-model", timeoutMs: 10, maxOutputTokens: 800, prompt: "context", client }), { code: "ETIMEDOUT" });
   assert.equal(aborted, true);
@@ -138,4 +142,27 @@ test("heuristic fallback is explicitly labeled and uses authoritative signals", 
   assert.equal(fallback.provider, "heuristic");
   assert.equal(fallback.signals.focusEfficiency, 63);
   assert.equal(fallback.signals.streak, 4);
+});
+
+test("Mentat daily user and global budgets are shared through the durable bucket interface", async () => {
+  const records = new Map();
+  const repository = {
+    async consume(key, { windowMs, now }) {
+      const previous = records.get(key);
+      const bucket = !previous || previous.resetAt <= now
+        ? { count: 0, resetAt: now + windowMs }
+        : previous;
+      bucket.count += 1;
+      records.set(key, bucket);
+      return bucket;
+    }
+  };
+  const configuration = { mentatMaxRequestsPerUserDay: 1, mentatMaxRequestsGlobalDay: 10 };
+  const workerA = createMentatBudgetCheck({ repository, clock: () => Date.parse("2026-10-20T12:00:00Z") });
+  const workerB = createMentatBudgetCheck({ repository, clock: () => Date.parse("2026-10-20T12:00:00Z") });
+
+  await workerA("shared-user", configuration);
+  await assert.rejects(workerB("shared-user", configuration), { statusCode: 429 });
+  await workerB("other-user", configuration);
+  assert.equal([...records.entries()].find(([key]) => key.startsWith("mentat:global:"))[1].count, 2);
 });

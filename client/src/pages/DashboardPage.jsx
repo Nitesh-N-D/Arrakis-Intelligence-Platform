@@ -143,8 +143,6 @@ export default function DashboardPage() {
   const mentatRequestRef = useRef(0);
   const mentatInFlightRef = useRef(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const socket = useSocket(accessToken);
-
   const refreshData = useCallback(async () => {
     const [dashboardResponse, prescienceResponse] = await Promise.all([
       platformService.dashboard(),
@@ -163,6 +161,8 @@ export default function DashboardPage() {
         : current
     );
   }, [setUser]);
+
+  const socket = useSocket(accessToken, user?.id, refreshData);
 
   const refreshMentat = useCallback(async (question = "") => {
     if (mentatInFlightRef.current) return;

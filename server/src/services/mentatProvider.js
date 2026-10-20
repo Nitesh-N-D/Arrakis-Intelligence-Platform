@@ -49,22 +49,27 @@ export const generateGemini = async ({ apiKey, model, timeoutMs, maxOutputTokens
   const controller = new AbortController();
   let timer;
   try {
-    const request = ai.models.generateContent({
+    const request = ai.interactions.create({
       model,
-      contents: prompt,
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: mentatSchema,
-        maxOutputTokens,
-        abortSignal: controller.signal
-      }
+      input: prompt,
+      system_instruction: systemInstruction,
+      response_format: {
+        type: "text",
+        mime_type: "application/json",
+        schema: mentatSchema
+      },
+      generation_config: { max_output_tokens: maxOutputTokens },
+      store: false
+    }, {
+      timeout_ms: timeoutMs,
+      retries: { strategy: "none" },
+      signal: controller.signal
     });
     const response = await Promise.race([
       request,
       new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(Object.assign(new Error("timeout"), { code: "ETIMEDOUT" })); }, timeoutMs); })
     ]);
-    const raw = typeof response.text === "function" ? response.text() : response.text;
+    const raw = response.output_text || (typeof response.text === "function" ? response.text() : response.text);
     if (typeof raw !== "string" || !raw.trim()) throw Object.assign(new Error("empty response"), { code: "EMPTY_RESPONSE" });
     let parsed;
     try { parsed = JSON.parse(raw); } catch { throw Object.assign(new Error("malformed response"), { code: "INVALID_RESPONSE" }); }

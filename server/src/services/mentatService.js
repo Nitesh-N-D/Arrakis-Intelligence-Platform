@@ -4,10 +4,9 @@ import { ApiError } from "../utils/ApiError.js";
 import { AnalyticsService } from "./analyticsService.js";
 import { PrescienceService } from "./prescienceService.js";
 import { generateGemini, getRetryAfterMs, isRetryableGeminiError, validateMentatOutput } from "./mentatProvider.js";
+import { RateLimitBucketRepository } from "../repositories/RateLimitBucketRepository.js";
 
-const requestBuckets = new Map();
-let globalDayKey = "";
-let globalDayCount = 0;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const capability = {
   maxRecommendations: 4,
@@ -118,19 +117,23 @@ const compactContext = ({ dashboard, prescience, question }) => ({
   question: String(question || "").slice(0, 500)
 });
 
-const checkMentatBudget = (userId) => {
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  if (globalDayKey !== today) { globalDayKey = today; globalDayCount = 0; requestBuckets.clear(); }
-  const previous = requestBuckets.get(String(userId));
-  const bucket = previous?.day === today ? previous : { day: today, count: 0 };
-  if (bucket.count >= env.mentatMaxRequestsPerUserDay || globalDayCount >= env.mentatMaxRequestsGlobalDay) {
-    throw new ApiError(429, "Mentat's daily request limit has been reached. Try again tomorrow.");
-  }
-  bucket.count += 1;
-  globalDayCount += 1;
-  requestBuckets.set(String(userId), bucket);
-};
+export const createMentatBudgetCheck = ({ repository = new RateLimitBucketRepository(), clock = Date.now } = {}) =>
+  async (userId, configuration = env) => {
+    const now = clock();
+    const today = new Date(now).toISOString().slice(0, 10);
+    const window = { windowMs: DAY_MS * 2, now };
+    const userBucket = await repository.consume(`mentat:user:${userId}:${today}`, window);
+    if (userBucket.count > configuration.mentatMaxRequestsPerUserDay) {
+      throw new ApiError(429, "Mentat's daily request limit has been reached. Try again tomorrow.");
+    }
+
+    const globalBucket = await repository.consume(`mentat:global:${today}`, window);
+    if (globalBucket.count > configuration.mentatMaxRequestsGlobalDay) {
+      throw new ApiError(429, "Mentat's daily request limit has been reached. Try again tomorrow.");
+    }
+  };
+
+const checkMentatBudget = createMentatBudgetCheck();
 
 const retryGemini = async (prompt, { configuration = env, generator = generateGemini } = {}) => {
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -171,7 +174,7 @@ export class MentatService {
   }
 
   async analyze(user, payload = {}) {
-    this.budgetCheck(user.id);
+    await this.budgetCheck(user.id, this.configuration);
     const context = await this.buildContext(user, payload.question || "");
 
     if (this.configuration.mentatProvider === "gemini" && this.configuration.geminiApiKey) {

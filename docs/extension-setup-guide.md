@@ -2,7 +2,7 @@
 
 ## Install
 
-1. Open `chrome://extensions`
+1. Open `chrome://extensions` in Chrome or `edge://extensions` in Microsoft Edge
 2. Enable Developer Mode
 3. Click `Load unpacked`
 4. Select the repository `extension/` directory
@@ -23,6 +23,6 @@
 - confirm override is hidden in strict mode
 - confirm distraction logs appear in the Arrakis dashboard
 
-Access tokens are short-lived. If synchronization pauses after a token expires, open the signed-in Arrakis app to refresh the extension connection. A new account clears queued activity from the previous account. Browser installation and these behaviors still require manual Chrome/Edge verification.
+Access tokens are short-lived. If synchronization pauses after a token expires, open the signed-in Arrakis app to refresh the extension connection. A new account clears queued activity from the previous account. Playwright smoke tests have exercised the unpacked extension in Chromium and Microsoft Edge; account-token handoff and logout/account switching in normal Chrome and Edge profiles still require manual verification.
 
 The blocking and timed-override flow uses `chrome.storage.session`, available in Chrome 102 and later. A blocked destination stays in extension memory for at most ten minutes; the extension block-page URL contains only a random context ID, not the destination URL. Restarting or reloading the extension clears this temporary context, so the user can navigate to the blocked site again to request an override.

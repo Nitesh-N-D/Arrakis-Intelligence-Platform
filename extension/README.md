@@ -1,6 +1,6 @@
-# Arrakis Chrome Extension
+# Arrakis Browser Extension
 
-The Arrakis Chrome Extension is a Manifest V3 companion for realtime distraction telemetry and Storm Zone enforcement.
+The Arrakis extension is a Manifest V3 companion for realtime distraction telemetry and Storm Zone enforcement. It targets Chrome and Chromium-based Microsoft Edge; other Chromium browsers are not verified.
 
 ## Features
 
@@ -25,7 +25,7 @@ The Arrakis Chrome Extension is a Manifest V3 companion for realtime distraction
 
 ## Setup
 
-1. Open `chrome://extensions`
+1. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge
 2. Enable Developer Mode
 3. Click `Load unpacked`
 4. Select the repository `extension/` folder
@@ -60,6 +60,7 @@ The Arrakis Chrome Extension is a Manifest V3 companion for realtime distraction
 - account changes clear queued activity so events from one operative cannot be uploaded under another operative
 - if JWT is missing, activity remains buffered locally and sync status shows a warning
 - Chrome internal pages are not tracked
+- automated unpacked-extension smoke coverage has exercised popup settings and blocking in Chromium and Microsoft Edge; Edge service-worker restart and Chromium timed-override behavior are covered. Store installation and account-token handoff in normal browser profiles still need manual verification.
 - blocking uses exact hostname and subdomain matching, not full-path matching
 - current source synchronizes hostnames and durations without page URLs or titles; pending sync events are deduplicated and expire after 24 hours
 - failed syncs retry with bounded exponential backoff using a persisted Chrome alarm, even when no tabs remain open
