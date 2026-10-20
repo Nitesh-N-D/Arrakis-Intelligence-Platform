@@ -71,27 +71,37 @@ export default function RegisterPage() {
     >
       <form className="grid gap-4" onSubmit={submit}>
         <div>
-          <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Name</label>
+          <label htmlFor="register-name" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Name</label>
           <input
+            id="register-name"
             className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
+            autoComplete="name"
+            required
             placeholder="Paul Atreides"
             value={form.name}
             onChange={(event) => setForm({ ...form, name: event.target.value })}
           />
         </div>
         <div>
-          <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Email</label>
+          <label htmlFor="register-email" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Email</label>
           <input
+            id="register-email"
             className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
+            autoComplete="email"
+            required
+            type="email"
             placeholder="operative@arrakis.ai"
             value={form.email}
             onChange={(event) => setForm({ ...form, email: event.target.value })}
           />
         </div>
         <div>
-          <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Password</label>
+          <label htmlFor="register-password" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Password</label>
           <input
+            id="register-password"
             className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
+            autoComplete="new-password"
+            required
             type="password"
             placeholder="Password"
             value={form.password}
@@ -99,8 +109,9 @@ export default function RegisterPage() {
           />
         </div>
         <div>
-          <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Target role</label>
+          <label htmlFor="register-target-role" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Target role</label>
           <select
+            id="register-target-role"
             className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
             value={form.targetRole}
             onChange={(event) => setForm({ ...form, targetRole: event.target.value })}

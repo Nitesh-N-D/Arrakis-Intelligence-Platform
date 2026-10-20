@@ -1,9 +1,12 @@
 import { UserRepository } from "../repositories/UserRepository.js";
 import { ApiError } from "../utils/ApiError.js";
-
-const userRepository = new UserRepository();
+import { roleSkillMatrix } from "../dune/skillMatrix.js";
 
 const allowedThemes = ["dark", "system"];
+const finiteOr = (value, fallback) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+};
 
 const normalizeSkills = (skills) => {
   if (!Array.isArray(skills)) {
@@ -12,10 +15,11 @@ const normalizeSkills = (skills) => {
 
   return skills
     .map((skill) => ({
-      name: String(skill?.name || "").trim(),
+      name: String(skill?.name || "").trim().slice(0, 80),
       level: Number(skill?.level || 1)
     }))
     .filter((skill) => skill.name)
+    .slice(0, 100)
     .map((skill) => ({
       name: skill.name,
       level: Math.max(1, Math.min(5, Number.isFinite(skill.level) ? skill.level : 1))
@@ -76,8 +80,12 @@ const serializeProfile = (user) => ({
 });
 
 export class ProfileService {
+  constructor({ userRepository = new UserRepository() } = {}) {
+    this.userRepository = userRepository;
+  }
+
   async getProfile(userId) {
-    const user = await userRepository.findById(userId);
+    const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new ApiError(404, "User not found");
     }
@@ -102,8 +110,11 @@ export class ProfileService {
     if (nextTargetRole.length < 2) {
       throw new ApiError(400, "Target role is required");
     }
+    if (!Object.hasOwn(roleSkillMatrix, nextTargetRole)) {
+      throw new ApiError(400, `Choose a supported target role: ${Object.keys(roleSkillMatrix).join(", ")}.`);
+    }
 
-    const user = await userRepository.updateById(userId, {
+    const user = await this.userRepository.updateById(userId, {
       name: nextName,
       bio: nextBio,
       avatarUrl: nextAvatarUrl,
@@ -119,51 +130,52 @@ export class ProfileService {
   }
 
   async updateSettings(userId, payload = {}) {
-    const current = await userRepository.findById(userId);
+    const current = await this.userRepository.findById(userId);
     if (!current) {
       throw new ApiError(404, "User not found");
     }
 
+    const currentPreferences = current.preferences?.toObject?.() || current.preferences || {};
     const nextPreferences = {
-      ...current.preferences,
+      ...currentPreferences,
       focusDurationPreference: [25, 50].includes(Number(payload.focusDurationPreference))
         ? Number(payload.focusDurationPreference)
-        : current.preferences.focusDurationPreference,
+        : currentPreferences.focusDurationPreference,
       stormWarningMinutes: Math.max(
         15,
-        Math.min(240, Number(payload.stormWarningMinutes || current.preferences.stormWarningMinutes))
+        Math.min(240, finiteOr(payload.stormWarningMinutes, currentPreferences.stormWarningMinutes))
       ),
-      blockedSites: normalizeBlockedSites(payload.blockedSites ?? current.preferences.blockedSites),
+      blockedSites: normalizeBlockedSites(payload.blockedSites ?? currentPreferences.blockedSites),
       strictBlockMode:
         typeof payload.strictBlockMode === "boolean"
           ? payload.strictBlockMode
-          : current.preferences.strictBlockMode,
+          : currentPreferences.strictBlockMode,
       extensionOverrideMinutes: Math.max(
         1,
         Math.min(
           60,
-          Number(payload.extensionOverrideMinutes || current.preferences.extensionOverrideMinutes)
+          finiteOr(payload.extensionOverrideMinutes, currentPreferences.extensionOverrideMinutes)
         )
       ),
       theme:
         typeof payload.theme === "string" && allowedThemes.includes(payload.theme)
           ? payload.theme
-          : current.preferences.theme,
+          : currentPreferences.theme,
       desktopNotificationsEnabled:
         typeof payload.desktopNotificationsEnabled === "boolean"
           ? payload.desktopNotificationsEnabled
-          : current.preferences.desktopNotificationsEnabled,
+          : currentPreferences.desktopNotificationsEnabled,
       stormAlarmEnabled:
         typeof payload.stormAlarmEnabled === "boolean"
           ? payload.stormAlarmEnabled
-          : current.preferences.stormAlarmEnabled,
+          : currentPreferences.stormAlarmEnabled,
       weeklyDigestEnabled:
         typeof payload.weeklyDigestEnabled === "boolean"
           ? payload.weeklyDigestEnabled
-          : current.preferences.weeklyDigestEnabled
+          : currentPreferences.weeklyDigestEnabled
     };
 
-    const user = await userRepository.updateById(userId, { preferences: nextPreferences });
+    const user = await this.userRepository.updateById(userId, { preferences: nextPreferences });
     return serializeProfile(user);
   }
 }

@@ -1,4 +1,5 @@
 import { Component } from "react";
+import { getSafeApplicationErrorMessage } from "../../utils/errorMessages";
 
 export default class AppErrorBoundary extends Component {
   constructor(props) {
@@ -6,12 +7,12 @@ export default class AppErrorBoundary extends Component {
     this.state = { hasError: false, message: "" };
   }
 
-  static getDerivedStateFromError(error) {
-    return { hasError: true, message: error?.message || "Unexpected application failure." };
+  static getDerivedStateFromError() {
+    return { hasError: true, message: getSafeApplicationErrorMessage() };
   }
 
-  componentDidCatch(error) {
-    console.error("App boundary caught an error", error);
+  componentDidCatch() {
+    console.error("Arrakis encountered an unexpected application error.");
   }
 
   render() {

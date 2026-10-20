@@ -23,13 +23,25 @@ const tasksByDifficulty = {
 
 export class SkillAnalyzerService {
   analyze({ userSkills, targetRole }) {
-    const requiredSkills = roleSkillMatrix[targetRole];
-
-    if (!requiredSkills) {
-      throw new ApiError(400, `Unknown target role: ${targetRole}`);
+    if (typeof targetRole !== "string" || !Object.hasOwn(roleSkillMatrix, targetRole)) {
+      throw new ApiError(400, "Choose a supported target role.");
     }
 
-    const skillMap = new Map(userSkills.map((skill) => [skill.name.toLowerCase(), skill.level]));
+    const requiredSkills = roleSkillMatrix[targetRole];
+
+    if (!Array.isArray(userSkills) || userSkills.length > 100) {
+      throw new ApiError(400, "Skills must be an array containing no more than 100 entries.");
+    }
+
+    const normalizedSkills = userSkills.map((skill) => {
+      const name = typeof skill?.name === "string" ? skill.name.trim() : "";
+      const level = Number(skill?.level);
+      if (!name || name.length > 80 || !Number.isFinite(level) || level < 1 || level > 5) {
+        throw new ApiError(400, "Each skill needs a name of 1–80 characters and a level from 1 to 5.");
+      }
+      return { name: name.toLowerCase(), level };
+    });
+    const skillMap = new Map(normalizedSkills.map((skill) => [skill.name, skill.level]));
 
     const weightedSkillScores = requiredSkills.map((requiredSkill) => {
       const currentLevel = skillMap.get(requiredSkill.name.toLowerCase()) || 0;

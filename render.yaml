@@ -1,11 +1,14 @@
 services:
   - type: web
-    name: arrakis-intelligence-api
-    env: node
+    name: Arrakis-Intelligence-Platform
+    runtime: docker
+    branch: main
+    region: singapore
+    plan: free
     rootDir: server
-    buildCommand: npm install
-    startCommand: npm start
-    autoDeploy: true
+    dockerfilePath: server/Dockerfile
+    dockerContext: server
+    autoDeployTrigger: commit
     envVars:
       - key: NODE_ENV
         value: production

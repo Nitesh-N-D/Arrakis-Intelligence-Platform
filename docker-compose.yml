@@ -5,6 +5,16 @@ services:
     image: mongo:7
     container_name: arrakis-mongodb
     restart: unless-stopped
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet --eval "try { rs.status().ok === 1 } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]}).ok === 1 }"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     ports:
       - "27017:27017"
     volumes:
@@ -14,12 +24,13 @@ services:
     build:
       context: ./server
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     environment:
       PORT: 5000
       NODE_ENV: development
       CLIENT_URL: http://localhost:5173
-      MONGODB_URI: mongodb://mongodb:27017/arrakis-intelligence
+      MONGODB_URI: mongodb://mongodb:27017/arrakis-intelligence?replicaSet=rs0
       JWT_ACCESS_SECRET: docker-access-secret
       JWT_REFRESH_SECRET: docker-refresh-secret
       JWT_ACCESS_EXPIRES_IN: 15m

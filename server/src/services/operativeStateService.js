@@ -4,7 +4,7 @@ const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
 const startOfDay = (value) => {
   const date = new Date(value);
-  date.setHours(0, 0, 0, 0);
+  date.setUTCHours(0, 0, 0, 0);
   return date;
 };
 

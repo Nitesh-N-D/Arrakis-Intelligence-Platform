@@ -12,14 +12,17 @@ export const errorHandler = (error, _req, res, _next) => {
     message = "A record with this unique value already exists.";
   }
 
+  const production = process.env.NODE_ENV === "production";
   if (process.env.NODE_ENV !== "test") {
-    console.error(error);
+    console.error(production ? { statusCode, errorName: error?.name || "Error" } : error);
   }
+
+  if (production && statusCode >= 500) message = "Internal server error";
 
   res.status(statusCode).json({
     success: false,
     message,
-    details: error.details || null,
+    details: production ? null : error.details || null,
     stack: process.env.NODE_ENV === "development" ? error.stack : undefined
   });
 };

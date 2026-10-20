@@ -17,27 +17,45 @@ export default function MentatPanel({ analysis, loading, onRefresh }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
+          {analysis ? (
+            <span className="rounded-full border border-white/10 px-3 py-2 text-xs text-white/55" aria-label={`Mentat provider: ${analysis.provider || "unknown"}`}>
+              {analysis.degraded ? "Heuristic fallback" : `${analysis.provider || "heuristic"}${analysis.model ? ` · ${analysis.model}` : ""}`}
+            </span>
+          ) : null}
           <Button disabled={loading} onClick={() => onRefresh(question)}>
             {loading ? "Consulting..." : "Refresh insight"}
           </Button>
         </div>
       </div>
 
+      {analysis?.degraded ? (
+        <div role="status" className="mt-4 rounded-card border border-amber-200/15 bg-amber-200/5 px-4 py-3 text-sm text-amber-100/80">
+          {analysis.degradedReason || "Showing deterministic heuristic guidance while the selected provider is unavailable."}
+        </div>
+      ) : null}
+
       <div className="mt-5 rounded-card border border-border-subtle bg-black/20 p-4">
-        <label className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">
+          <label htmlFor="mentat-question" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">
           Ask Mentat
         </label>
-        <div className="flex flex-col gap-3 md:flex-row">
+        <form
+          className="flex flex-col gap-3 md:flex-row"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onRefresh(question);
+          }}
+        >
           <input
+            id="mentat-question"
             className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
             placeholder="What should I optimize tomorrow morning?"
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
           />
-          <Button className="md:min-w-[9rem]" disabled={loading} onClick={() => onRefresh(question)}>
+          <Button type="submit" className="md:min-w-[9rem]" disabled={loading}>
             Send
           </Button>
-        </div>
+        </form>
       </div>
 
       {!analysis && !loading ? (

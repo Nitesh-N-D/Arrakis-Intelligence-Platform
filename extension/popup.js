@@ -1,3 +1,5 @@
+import { normalizePattern } from "./domainRules.js";
+
 const DEFAULTS = {
   backendUrl: "http://localhost:5000/api/v1",
   jwtToken: "",
@@ -32,31 +34,52 @@ initializePopup().catch((error) => {
 });
 
 saveButton.addEventListener("click", async () => {
-  const blockedSites = blockedSitesInput.value
-    .split(/\r?\n/)
-    .map(normalizePattern)
-    .filter(Boolean);
+  const rawBlockedSites = blockedSitesInput.value.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+  const normalizedSites = rawBlockedSites.map(normalizePattern);
+  if (normalizedSites.some((host) => !host)) {
+    renderStatus({ state: "error", message: "One or more blocked domains are invalid. Use a hostname such as example.com.", updatedAt: new Date().toISOString() });
+    return;
+  }
 
-  const uniqueBlockedSites = [...new Set(blockedSites)];
+  const uniqueBlockedSites = [...new Set(normalizedSites)];
   const backendUrl = normalizeBackendUrl(backendUrlInput.value);
+  if (!backendUrl) {
+    renderStatus({ state: "error", message: "Use an HTTPS backend URL (HTTP is allowed only for localhost).", updatedAt: new Date().toISOString() });
+    return;
+  }
   const jwtToken = jwtTokenInput.value.trim();
   const strictMode = strictModeInput.checked;
   const overrideMinutes = Math.max(1, Number(overrideMinutesInput.value) || 5);
 
-  await chrome.storage.local.set({
-    backendUrl,
-    jwtToken,
-    blockedSites: uniqueBlockedSites,
-    strictMode,
-    overrideMinutes
-  });
+  saveButton.disabled = true;
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "SAVE_SETTINGS",
+      payload: {
+        backendUrl,
+        jwtToken,
+        blockedSites: uniqueBlockedSites,
+        strictMode,
+        overrideMinutes
+      }
+    });
+    if (!response?.ok) {
+      renderStatus({ state: "error", message: response?.error || "Settings could not be saved.", updatedAt: new Date().toISOString() });
+      return;
+    }
 
-  blockedSitesInput.value = uniqueBlockedSites.join("\n");
-  renderStatus({
-    state: "success",
-    message: "Storm control settings saved.",
-    updatedAt: new Date().toISOString()
-  });
+    blockedSitesInput.value = (response.settings?.blockedSites || []).join("\n");
+    backendUrlInput.value = response.settings?.backendUrl || backendUrl;
+    renderStatus({
+      state: "success",
+      message: "Storm control settings saved.",
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    renderStatus({ state: "error", message: error.message || "Settings could not be saved.", updatedAt: new Date().toISOString() });
+  } finally {
+    saveButton.disabled = false;
+  }
 });
 
 addCurrentSiteButton.addEventListener("click", () => {
@@ -76,11 +99,12 @@ addCurrentSiteButton.addEventListener("click", () => {
 });
 
 async function initializePopup() {
-  const [stored, tab] = await Promise.all([
-    chrome.storage.local.get(Object.keys(DEFAULTS)),
+  const [settingsResponse, tab] = await Promise.all([
+    chrome.runtime.sendMessage({ type: "GET_SETTINGS" }),
     getActiveTab()
   ]);
 
+  const stored = settingsResponse?.settings || {};
   const settings = {
     ...DEFAULTS,
     ...stored
@@ -116,21 +140,13 @@ function normalizeBackendUrl(value) {
     return DEFAULTS.backendUrl;
   }
 
-  return trimmed.endsWith("/api/v1") ? trimmed : `${trimmed}/api/v1`;
-}
-
-function normalizePattern(value) {
-  if (!value) {
-    return "";
-  }
-
-  let normalized = String(value).trim().toLowerCase();
-
-  normalized = normalized.replace(/^https?:\/\//, "");
-  normalized = normalized.replace(/^www\./, "");
-  normalized = normalized.replace(/\/.*$/, "");
-
-  return normalized;
+  try {
+    const parsed = new URL(trimmed);
+    const localHttp = parsed.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname);
+    const path = parsed.pathname.replace(/\/+$/, "");
+    if ((parsed.protocol !== "https:" && !localHttp) || parsed.username || parsed.password || (path && path !== "/api/v1")) return "";
+    return `${parsed.origin}/api/v1`;
+  } catch { return ""; }
 }
 
 function renderStatus(status) {

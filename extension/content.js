@@ -4,11 +4,13 @@
 
   function getPayload() {
     return {
-      url: window.location.href,
-      title: document.title || window.location.hostname,
       host: window.location.hostname,
       durationSeconds: 10
     };
+  }
+
+  function isTrustedArrakisOrigin() {
+    return ["https://arrakis-intelligence-platform.vercel.app", "http://localhost:5173"].includes(window.location.origin);
   }
 
   function pageIsTrackable() {
@@ -16,7 +18,7 @@
   }
 
   function sendHeartbeat() {
-    if (!pageIsTrackable()) {
+    if (!pageIsTrackable() || isTrustedArrakisOrigin()) {
       return;
     }
 
@@ -58,6 +60,18 @@
         url: window.location.href
       }
     });
+  }
+
+  if (isTrustedArrakisOrigin()) {
+    window.addEventListener("message", (event) => {
+      if (event.source !== window || event.origin !== window.location.origin) return;
+      if (event.data?.source !== "arrakis-platform" || event.data?.type !== "ACCESS_TOKEN_UPDATE") return;
+      chrome.runtime.sendMessage({
+        type: "SYNC_ACCESS_TOKEN",
+        payload: { accessToken: event.data.accessToken || "" }
+      });
+    });
+    window.postMessage({ source: "arrakis-extension", type: "ACCESS_TOKEN_REQUEST" }, window.location.origin);
   }
 
   document.addEventListener("visibilitychange", syncHeartbeatState);

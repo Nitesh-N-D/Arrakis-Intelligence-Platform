@@ -1,6 +1,6 @@
 import { User } from "../models/User.js";
 
-const teamPopulation = "name totalSpice totalStreak members";
+const teamPopulation = "name totalSpice totalStreak";
 
 export class UserRepository {
   create(data) {
@@ -18,20 +18,28 @@ export class UserRepository {
     return User.findOne({ googleId });
   }
 
-  findById(id) {
-    return User.findById(id).populate("team", teamPopulation);
+  findById(id, options = {}) {
+    const query = User.findById(id).populate("team", teamPopulation);
+    return options.session ? query.session(options.session) : query;
   }
 
-  updateById(id, update) {
+  updateById(id, update, options = {}) {
     return User.findByIdAndUpdate(id, update, {
       new: true,
-      runValidators: true
+      runValidators: true,
+      ...options
+    }).populate("team", teamPopulation);
+  }
+
+  addSpice(id, amount, update = {}, options = {}) {
+    return User.findByIdAndUpdate(id, { $inc: { totalSpice: amount }, $set: update }, {
+      new: true, runValidators: true, ...options
     }).populate("team", teamPopulation);
   }
 
   listTopUsers(limit = 10) {
     return User.find({})
-      .select("name email avatarUrl totalSpice focusStreak currentRank targetRole team")
+      .select("name avatarUrl totalSpice focusStreak currentRank targetRole team")
       .populate("team", "name")
       .sort({ totalSpice: -1, focusStreak: -1, createdAt: 1 })
       .limit(limit);

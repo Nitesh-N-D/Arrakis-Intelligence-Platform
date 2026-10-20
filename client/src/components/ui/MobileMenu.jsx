@@ -1,7 +1,10 @@
 import { AnimatePresence, motion } from "framer-motion";
+import useDialogFocus from "../../hooks/useDialogFocus";
 import Button from "./Button";
 
 export default function MobileMenu({ open, onClose, sections = [], onNavigate }) {
+  const dialogRef = useDialogFocus(open, onClose);
+
   return (
     <AnimatePresence>
       {open ? (
@@ -10,17 +13,25 @@ export default function MobileMenu({ open, onClose, sections = [], onNavigate })
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) onClose?.();
+          }}
         >
           <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-menu-title"
             className="glass-panel mx-auto max-w-md px-5 py-5"
             initial={{ y: -16, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -16, opacity: 0 }}
+            tabIndex={-1}
           >
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-xs uppercase tracking-[0.34em] text-white/45">Navigation</div>
-                <div className="mt-2 font-display text-2xl text-white">Command menu</div>
+                <div id="mobile-menu-title" className="mt-2 font-display text-2xl text-white">Command menu</div>
               </div>
               <Button onClick={onClose} variant="ghost">
                 Close

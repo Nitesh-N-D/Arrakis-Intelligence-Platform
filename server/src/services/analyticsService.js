@@ -5,6 +5,7 @@ import { OperativeStateService } from "./operativeStateService.js";
 import { RoadmapService } from "./roadmapService.js";
 import { SkillAnalyzerService } from "./skillAnalyzerService.js";
 import { StormEngine } from "./stormEngine.js";
+import { fillDailySeries } from "./dailySeries.js";
 
 const focusSessionRepository = new FocusSessionRepository();
 const distractionLogRepository = new DistractionLogRepository();
@@ -25,8 +26,8 @@ export class AnalyticsService {
       distractionEventsCount,
       leaderboard
     ] = await Promise.all([
-      focusSessionRepository.aggregateDaily(syncedUser.id, 7),
-      distractionLogRepository.aggregateDaily(syncedUser.id, 7),
+      focusSessionRepository.aggregateDaily(syncedUser.id, 7).then((rows) => fillDailySeries(rows, 7)),
+      distractionLogRepository.aggregateDaily(syncedUser.id, 7).then((rows) => fillDailySeries(rows, 7)),
       roadmapService.ensureRoadmap(syncedUser),
       focusSessionRepository.countByUser(syncedUser.id),
       distractionLogRepository.countByUser(syncedUser.id),
@@ -41,12 +42,10 @@ export class AnalyticsService {
     const todayDistractionMinutes = distractionTrend.at(-1)?.totalMinutes || 0;
     const stormState = stormEngine.evaluate(todayDistractionMinutes);
 
-    const weeklyProductivityScore =
-      focusTrend.length > 0
-        ? Math.round(
-            focusTrend.reduce((sum, day) => sum + day.averageProductivity, 0) / focusTrend.length
-          )
-        : 0;
+    const completedSessionCount = focusTrend.reduce((sum, day) => sum + (day.sessions || 0), 0);
+    const weeklyProductivityScore = completedSessionCount > 0
+      ? Math.round(focusTrend.reduce((sum, day) => sum + day.averageProductivity * (day.sessions || 0), 0) / completedSessionCount)
+      : 0;
     const totalFocusMinutes = focusTrend.reduce((sum, day) => sum + day.totalMinutes, 0);
     const totalDistractionMinutes = distractionTrend.reduce((sum, day) => sum + day.totalMinutes, 0);
     const focusEfficiency =

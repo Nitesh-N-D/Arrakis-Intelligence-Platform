@@ -11,11 +11,6 @@ import {
   setRefreshTokenCookie
 } from "../utils/cookies.js";
 
-const authService = new AuthService();
-const userRepository = new UserRepository();
-const operativeStateService = new OperativeStateService();
-const tokenService = new TokenService();
-
 const appendQuery = (baseUrl, params) => {
   const url = new URL(baseUrl);
   Object.entries(params).forEach(([key, value]) => {
@@ -30,6 +25,7 @@ const serializeUser = (user) => ({
   id: user.id,
   name: user.name,
   email: user.email,
+  provider: user.provider,
   role: user.role,
   avatarUrl: user.avatarUrl || "",
   bio: user.bio || "",
@@ -54,8 +50,19 @@ const serializeUser = (user) => ({
 });
 
 export class AuthController {
+  constructor({
+    authService = new AuthService(),
+    userRepository = new UserRepository(),
+    operativeStateService = new OperativeStateService(),
+    tokenService = new TokenService(),
+    isGoogleOAuthConfigured: googleOAuthConfigured = isGoogleOAuthConfigured
+  } = {}) {
+    Object.assign(this, { authService, userRepository, operativeStateService, tokenService });
+    this.googleOAuthConfigured = googleOAuthConfigured;
+  }
+
   async register(req, res) {
-    const result = await authService.register(req.body, {
+    const result = await this.authService.register(req.body, {
       userAgent: req.headers["user-agent"],
       ipAddress: req.ip
     });
@@ -71,7 +78,7 @@ export class AuthController {
   }
 
   async login(req, res) {
-    const result = await authService.login(req.body, {
+    const result = await this.authService.login(req.body, {
       userAgent: req.headers["user-agent"],
       ipAddress: req.ip
     });
@@ -88,7 +95,7 @@ export class AuthController {
 
   async refresh(req, res) {
     const refreshToken = getRefreshTokenFromRequest(req);
-    const tokens = await authService.refresh(refreshToken, {
+    const tokens = await this.authService.refresh(refreshToken, {
       userAgent: req.headers["user-agent"],
       ipAddress: req.ip
     });
@@ -98,14 +105,14 @@ export class AuthController {
   }
 
   async logout(req, res) {
-    await authService.logout(getRefreshTokenFromRequest(req));
+    await this.authService.logout(getRefreshTokenFromRequest(req));
     clearRefreshTokenCookie(res);
     res.json({ success: true, message: "Logged out successfully" });
   }
 
   async me(req, res) {
-    const user = await userRepository.findById(req.user.id);
-    const syncedUser = await operativeStateService.syncUserState(user);
+    const user = await this.userRepository.findById(req.user.id);
+    const syncedUser = await this.operativeStateService.syncUserState(user);
     res.json({ success: true, data: serializeUser(syncedUser) });
   }
 
@@ -113,8 +120,8 @@ export class AuthController {
     res.json({
       success: true,
       data: {
-        enabled: isGoogleOAuthConfigured(),
-        url: isGoogleOAuthConfigured()
+        enabled: this.googleOAuthConfigured(),
+        url: this.googleOAuthConfigured()
           ? `${env.googleRedirectUri.replace(/\/callback$/, "")}`
           : null
       }
@@ -122,7 +129,7 @@ export class AuthController {
   }
 
   async ensureGoogleConfigured(_req, _res, next) {
-    if (!isGoogleOAuthConfigured()) {
+    if (!this.googleOAuthConfigured()) {
       return next(new ApiError(503, "Google OAuth is not configured"));
     }
 
@@ -130,7 +137,7 @@ export class AuthController {
   }
 
   async googleCallback(req, res) {
-    const tokens = await tokenService.issueTokens(req.user, {
+    const tokens = await this.tokenService.issueTokens(req.user, {
       userAgent: req.headers["user-agent"],
       ipAddress: req.ip
     });

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/ui/Button";
@@ -140,9 +140,9 @@ export default function DashboardPage() {
   const [teamForm, setTeamForm] = useState({ createName: "", joinName: "" });
   const [teamSubmitting, setTeamSubmitting] = useState("");
   const [mentatLoading, setMentatLoading] = useState(false);
+  const mentatRequestRef = useRef(0);
+  const mentatInFlightRef = useRef(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const socket = useSocket(accessToken);
-
   const refreshData = useCallback(async () => {
     const [dashboardResponse, prescienceResponse] = await Promise.all([
       platformService.dashboard(),
@@ -162,18 +162,24 @@ export default function DashboardPage() {
     );
   }, [setUser]);
 
+  const socket = useSocket(accessToken, user?.id, refreshData);
+
   const refreshMentat = useCallback(async (question = "") => {
+    if (mentatInFlightRef.current) return;
+    mentatInFlightRef.current = true;
+    const requestId = ++mentatRequestRef.current;
     setMentatLoading(true);
     setActionError("");
     try {
       const response = await platformService.mentatAnalyze({
         question: question || "Give me the best guidance for today."
       });
-      setMentat(response.data);
+      if (requestId === mentatRequestRef.current) setMentat(response.data);
     } catch (mentatError) {
       setActionError(mentatError.message || "Mentat could not complete analysis.");
     } finally {
-      setMentatLoading(false);
+      mentatInFlightRef.current = false;
+      if (requestId === mentatRequestRef.current) setMentatLoading(false);
     }
   }, []);
 
@@ -287,20 +293,33 @@ export default function DashboardPage() {
     };
   }, [socket, setUser]);
 
+  const handleTimerStart = useCallback(async ({ duration, type }) => {
+    const response = await platformService.startFocusSession({ duration, type });
+    return response.data.session;
+  }, []);
+
   const handleTimerComplete = useCallback(
-    async ({ duration, type }) => {
-      await platformService.harvestSpice({
-        duration,
-        type,
-        notes: duration === 50 ? "Deep focus harvest" : "Pomodoro harvest"
-      });
-      await refreshData();
-      await refreshMentat("Recalculate my next best move after the latest focus session.");
+    async ({ sessionId }) => {
+      await platformService.completeFocusSession(sessionId);
+      const refreshResults = await Promise.allSettled([
+        refreshData(),
+        refreshMentat("Recalculate my next best move after the latest focus session.")
+      ]);
+      if (refreshResults.some((result) => result.status === "rejected")) {
+        setActionError("Harvest saved successfully, but some dashboard data could not refresh. Reload to sync the latest totals.");
+      }
     },
-    [refreshData, refreshMentat]
+    [refreshData, refreshMentat, setActionError]
   );
 
-  const timer = useFocusTimer({ onComplete: handleTimerComplete });
+  const timer = useFocusTimer({
+    onStart: handleTimerStart,
+    onComplete: handleTimerComplete,
+    onPause: platformService.pauseFocusSession,
+    onResume: platformService.resumeFocusSession,
+    onReset: platformService.resetFocusSession,
+    onRecover: platformService.getActiveFocusSession
+  });
   const stormLevel = dashboard.analytics.stormState?.stormLevel || "CALM";
   useStormAlarm(stormLevel);
 
@@ -594,6 +613,7 @@ export default function DashboardPage() {
                 <div className="text-xs uppercase tracking-[0.3em] text-white/45">Manual storm logging</div>
                 <form className="mt-4 grid gap-3" onSubmit={handleStormLog}>
                   <input
+                    aria-label="App or site"
                     className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
                     placeholder="App or site"
                     value={stormForm.appName}
@@ -601,6 +621,7 @@ export default function DashboardPage() {
                   />
                   <div className="grid gap-3 sm:grid-cols-2">
                     <input
+                      aria-label="Duration in minutes"
                       className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
                       type="number"
                       min="1"
@@ -609,6 +630,7 @@ export default function DashboardPage() {
                       onChange={(event) => setStormForm({ ...stormForm, duration: event.target.value })}
                     />
                     <select
+                      aria-label="Distraction severity"
                       className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
                       value={stormForm.severity}
                       onChange={(event) => setStormForm({ ...stormForm, severity: event.target.value })}
@@ -833,6 +855,7 @@ export default function DashboardPage() {
                   <form className="space-y-3" onSubmit={createTeam}>
                     <div className="text-xs uppercase tracking-[0.28em] text-white/45">Create team</div>
                     <input
+                      aria-label="New team name"
                       className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
                       placeholder="Sietch name"
                       value={teamForm.createName}
@@ -848,6 +871,7 @@ export default function DashboardPage() {
                   <form className="space-y-3" onSubmit={joinTeam}>
                     <div className="text-xs uppercase tracking-[0.28em] text-white/45">Join team</div>
                     <input
+                      aria-label="Existing team name"
                       className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
                       placeholder="Existing team name"
                       value={teamForm.joinName}

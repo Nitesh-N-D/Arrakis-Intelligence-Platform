@@ -1,27 +1,28 @@
 import mongoose from "mongoose";
 import { env } from "./env.js";
 import { RefreshToken } from "../models/RefreshToken.js";
+import { RateLimitBucket } from "../models/RateLimitBucket.js";
 
-const syncRefreshTokenIndexes = async () => {
+const ensureRefreshTokenIndexes = async () => {
   try {
-    const collection = mongoose.connection.collection(RefreshToken.collection.name);
-    const indexes = await collection.indexes();
-
-    for (const legacyName of ["token_1", "refreshToken_1"]) {
-      if (indexes.some((index) => index.name === legacyName)) {
-        await collection.dropIndex(legacyName);
-      }
-    }
-
-    await RefreshToken.syncIndexes();
+    await RefreshToken.createIndexes();
   } catch (error) {
-    console.warn("Refresh token index sync warning", error.message);
+    console.warn("Refresh token index creation warning", error?.name || "Error");
+  }
+};
+
+const ensureRateLimitIndexes = async () => {
+  try {
+    await RateLimitBucket.createIndexes();
+  } catch (error) {
+    console.warn("Rate limit index creation warning", error?.name || "Error");
   }
 };
 
 export const connectDatabase = async () => {
   mongoose.set("strictQuery", true);
   await mongoose.connect(env.mongoUri);
-  await syncRefreshTokenIndexes();
+  await ensureRefreshTokenIndexes();
+  await ensureRateLimitIndexes();
   console.log("MongoDB connected");
 };
