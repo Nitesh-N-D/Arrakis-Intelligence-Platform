@@ -37,6 +37,8 @@ export const createRateLimitMiddleware = (
   };
 
   return (req, res, next) => {
+    if (typeof options.skip === "function" && options.skip(req)) return next();
+
     const identity = options.byUser && req.user?.id ? `user:${req.user.id}` : getBucketKey(req);
     const key = `${options.namespace || "global"}:${identity}`;
     const now = clock();
