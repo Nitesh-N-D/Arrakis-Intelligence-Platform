@@ -4,6 +4,7 @@ import {
   getHostFromUrl,
   getJwtSubject,
   getNextPendingSyncAt,
+  getSafeExtensionErrorMessage,
   isOverrideActive,
   matchesBlockedSite,
   normalizePattern,
@@ -52,4 +53,14 @@ test("extension account handoff accepts only unexpired JWT subjects", () => {
   assert.equal(shouldClearActivityForAccount("operative-1", "operative-1"), false);
   assert.equal(shouldClearActivityForAccount("", "operative-1", true), true);
   assert.equal(shouldClearActivityForAccount("", "operative-1", false), false);
+});
+
+test("extension error messages never reflect raw error contents", () => {
+  const error = Object.assign(new Error("https://api.example/?token=secret"), { name: "TypeError" });
+  const message = getSafeExtensionErrorMessage(error);
+
+  assert.equal(message, "The request failed. Check your connection and API URL.");
+  assert.equal(message.includes("secret"), false);
+  assert.match(getSafeExtensionErrorMessage(Object.assign(new Error("secret"), { name: "AbortError" })), /timed out/);
+  assert.match(getSafeExtensionErrorMessage(new Error("secret")), /extension action failed/i);
 });

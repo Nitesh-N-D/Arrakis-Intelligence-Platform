@@ -1,4 +1,4 @@
-import { getHostFromUrl, getJwtSubject, getNextPendingSyncAt, isOverrideActive, matchesBlockedSite, normalizePattern, shouldClearActivityForAccount } from "./domainRules.js";
+import { getHostFromUrl, getJwtSubject, getNextPendingSyncAt, getSafeExtensionErrorMessage, isOverrideActive, matchesBlockedSite, normalizePattern, shouldClearActivityForAccount } from "./domainRules.js";
 
 const DEFAULT_SETTINGS = {
   backendUrl: "http://localhost:5000/api/v1",
@@ -71,10 +71,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   void handleRuntimeMessage(message, sender)
     .then((response) => sendResponse(response))
     .catch((error) => {
-      console.error("Arrakis extension error:", error);
+      console.error("Arrakis extension action failed.");
       sendResponse({
         ok: false,
-        error: error.message || "Unexpected extension error"
+        error: getSafeExtensionErrorMessage(error)
       });
     });
 

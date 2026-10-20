@@ -68,3 +68,9 @@ export function shouldClearActivityForAccount(previousSubject, nextSubject, hasQ
   if (!nextSubject) return false;
   return previousSubject ? previousSubject !== nextSubject : hasQueuedActivity;
 }
+
+export function getSafeExtensionErrorMessage(error) {
+  if (error?.name === "AbortError") return "The request timed out. Check your connection and try again.";
+  if (error?.name === "TypeError") return "The request failed. Check your connection and API URL.";
+  return "The extension action failed. Check your settings and try again.";
+}
