@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Button from "./Button";
 import Card from "./Card";
@@ -13,7 +14,10 @@ const formatTime = (remainingMs) => {
   return `${minutes}:${seconds}`;
 };
 
-export default function Timer({ timer }) {
+export default function Timer({ timer, presets = [25, 50], missions = [] }) {
+  const [missionId, setMissionId] = useState("");
+  const openMissions = missions.filter((mission) => mission.status === "todo");
+  const startPreset = (minutes) => timer.start(minutes, { missionId: missionId || undefined });
   const radius = 86;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (timer.progress / 100) * circumference;
@@ -26,15 +30,30 @@ export default function Timer({ timer }) {
           <div className="text-xs uppercase tracking-[0.34em] text-white/45">Spice System</div>
           <h2 className="mt-3 font-display text-3xl text-white md:text-4xl">Focus harvest timer</h2>
           <p className="mt-3 text-sm leading-6 text-white/60">
-            Launch a real 25 or 50 minute session, pause when needed, and auto-bank spice on completion.
+            Start a session using your presets, pause when needed, and spice is banked when the server confirms completion. Change presets in Settings.
           </p>
+          {openMissions.length ? (
+            <label className="mt-5 grid gap-1 text-sm text-white/70">
+              <span>Focus on a mission (optional)</span>
+              <select
+                className="focus-ring rounded-button border border-border-subtle bg-black/30 px-3 py-2 text-white"
+                disabled={!timer.canStart}
+                value={missionId}
+                onChange={(event) => setMissionId(event.target.value)}
+              >
+                <option value="">No specific mission</option>
+                {openMissions.map((mission) => (
+                  <option key={mission.id} value={mission.id}>{mission.priority ? "★ " : ""}{mission.title}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button disabled={!timer.canStart} onClick={() => timer.start(25)}>
-              Harvest 25
-            </Button>
-            <Button variant="secondary" disabled={!timer.canStart} onClick={() => timer.start(50)}>
-              Harvest 50
-            </Button>
+            {presets.map((minutes, index) => (
+              <Button key={minutes} variant={index === 0 ? "primary" : "secondary"} disabled={!timer.canStart} onClick={() => startPreset(minutes)}>
+                Focus {minutes}
+              </Button>
+            ))}
             <Button variant="ghost" disabled={timer.mode !== "running"} onClick={timer.pause}>
               Pause
             </Button>

@@ -1,3 +1,4 @@
+import { careerForAnalysis, serializeCareer } from "./careerProfile.js";
 import { DistractionLogRepository } from "../repositories/DistractionLogRepository.js";
 import { FocusSessionRepository } from "../repositories/FocusSessionRepository.js";
 import { LeaderboardService } from "./leaderboardService.js";
@@ -34,9 +35,12 @@ export class AnalyticsService {
       leaderboardService.getSummary()
     ]);
 
+    // Unknown or legacy role strings are analysed as custom roles instead of failing the whole dashboard.
     const skillAnalysis = skillAnalyzerService.analyze({
       userSkills: syncedUser.skills,
-      targetRole: syncedUser.targetRole
+      targetRole: syncedUser.targetRole,
+      career: careerForAnalysis(syncedUser),
+      allowCustom: true
     });
 
     const todayDistractionMinutes = distractionTrend.at(-1)?.totalMinutes || 0;
@@ -80,6 +84,7 @@ export class AnalyticsService {
         focusStreak: syncedUser.focusStreak,
         stormModeActive: syncedUser.stormModeActive,
         targetRole: syncedUser.targetRole,
+        career: serializeCareer(syncedUser),
         preferences: syncedUser.preferences,
         onboarding: syncedUser.onboarding,
         team: syncedUser.team

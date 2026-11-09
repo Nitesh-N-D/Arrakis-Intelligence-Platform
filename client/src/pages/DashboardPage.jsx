@@ -1,6 +1,11 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import DisciplineMap from "../components/career/DisciplineMap";
+import RoadmapPanel from "../components/career/RoadmapPanel";
+import InsightsPanel from "../components/insights/InsightsPanel";
+import GoalsPanel from "../components/planning/GoalsPanel";
+import MissionControl from "../components/planning/MissionControl";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import EmptyState from "../components/ui/EmptyState";
@@ -85,6 +90,8 @@ const stormDefaults = {
 
 const dashboardSections = [
   { href: "#harvest", label: "Harvest", eyebrow: "Timer" },
+  { href: "#missions", label: "Mission Control", eyebrow: "Today" },
+  { href: "#insights", label: "Insights", eyebrow: "Patterns" },
   { href: "#analytics", label: "Analytics", eyebrow: "Trends" },
   { href: "#skills", label: "Discipline Map", eyebrow: "Skills" },
   { href: "#roadmap", label: "Ascension", eyebrow: "Roadmap" },
@@ -131,6 +138,10 @@ export default function DashboardPage() {
   const [dashboard, setDashboard] = useState(emptyDashboard);
   const [prescience, setPrescience] = useState(null);
   const [mentat, setMentat] = useState(null);
+  const [missionsToday, setMissionsToday] = useState([]);
+  const [goalsData, setGoalsData] = useState(null);
+  const [planningKey, setPlanningKey] = useState(0);
+  const [blockNotice, setBlockNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
@@ -298,9 +309,35 @@ export default function DashboardPage() {
     return response.data.session;
   }, []);
 
+  const loadGoals = useCallback(async () => {
+    try {
+      const response = await platformService.goals();
+      setGoalsData(response.data);
+    } catch (_error) {
+      setGoalsData((current) => current || { goals: [], summary: null });
+    }
+  }, []);
+
+  useEffect(() => { if (accessToken) loadGoals(); }, [accessToken, loadGoals]);
+
+  const handleBlockSite = useCallback(async (site) => {
+    const current = user?.preferences?.blockedSites || [];
+    if (current.includes(site)) return;
+    try {
+      const response = await platformService.updateSettings({ blockedSites: [...current, site] });
+      const preferences = response.data?.preferences || response.data?.user?.preferences;
+      if (preferences) setUser((existing) => (existing ? { ...existing, preferences } : existing));
+      setBlockNotice(`${site} was added to your block list. The Edge extension picks it up on its next sync.`);
+      setPlanningKey((key) => key + 1);
+    } catch (blockError) {
+      setBlockNotice(blockError.message || "Could not update the block list.");
+    }
+  }, [user, setUser]);
+
   const handleTimerComplete = useCallback(
     async ({ sessionId }) => {
       await platformService.completeFocusSession(sessionId);
+      setPlanningKey((key) => key + 1);
       const refreshResults = await Promise.allSettled([
         refreshData(),
         refreshMentat("Recalculate my next best move after the latest focus session.")
@@ -369,6 +406,35 @@ export default function DashboardPage() {
     }
   };
 
+  const applyRoadmap = (nextRoadmap) => {
+    if (!nextRoadmap) return;
+    setDashboard((current) => ({ ...current, analytics: { ...current.analytics, roadmap: nextRoadmap } }));
+  };
+
+  const runRoadmapAction = async (key, action, fallbackMessage) => {
+    setRoadmapSubmitting(key);
+    setActionError("");
+    try {
+      const response = await action();
+      applyRoadmap(response?.data);
+      return true;
+    } catch (roadmapError) {
+      setActionError(roadmapError.message || fallbackMessage);
+      return false;
+    } finally {
+      setRoadmapSubmitting(null);
+    }
+  };
+
+  const updateRoadmapPhase = (phaseId, payload) =>
+    runRoadmapAction(phaseId, () => platformService.updateRoadmapPhase(phaseId, payload), "Unable to update the roadmap phase.");
+
+  const addRoadmapEvidence = (phaseId, payload) =>
+    runRoadmapAction(phaseId, () => platformService.addRoadmapEvidence(phaseId, payload), "Unable to add evidence.");
+
+  const removeRoadmapEvidence = (phaseId, evidenceId) =>
+    runRoadmapAction(phaseId, () => platformService.removeRoadmapEvidence(phaseId, evidenceId), "Unable to remove evidence.");
+
   const createTeam = async (event) => {
     event.preventDefault();
     if (!teamForm.createName.trim()) {
@@ -414,7 +480,6 @@ export default function DashboardPage() {
   const operative = dashboard.operative || user;
   const leaderboard = dashboard.leaderboard || dashboard.analytics.leaderboard;
   const roadmap = dashboard.analytics.roadmap;
-  const activePhase = roadmap?.phases?.find((phase) => phase.status === "active");
   const skillAnalysis = dashboard.analytics.skillAnalysis;
   const stormState = dashboard.analytics.stormState;
   const performanceSignals = dashboard.analytics.performanceSignals;
@@ -544,7 +609,7 @@ export default function DashboardPage() {
           <div className="mt-5 grid gap-5 2xl:grid-cols-[1.05fr_0.95fr]">
             <div className="grid gap-5">
               <section id="harvest">
-                <Timer timer={timer} />
+                <Timer timer={timer} presets={user?.preferences?.focusPresets || [25, 50]} missions={missionsToday} />
               </section>
 
               <Card>
@@ -576,6 +641,13 @@ export default function DashboardPage() {
                     <div className="font-display text-3xl text-white">
                       {operative?.targetRole || "Target Role"}
                     </div>
+                    <button
+                      className="focus-ring mt-2 text-sm text-amber-100 underline-offset-4 hover:underline"
+                      type="button"
+                      onClick={() => navigate("/onboarding/career")}
+                    >
+                      {user?.career?.selectionPending ? "Choose your career" : "Change career or type your own role"}
+                    </button>
                     <div className="mt-2 text-sm text-white/58">
                       Current storm band:{" "}
                       <span className="text-amber-100">{stormState?.stormLevel || "CALM"}</span>
@@ -648,6 +720,16 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          <section id="missions" className="mt-5 grid gap-5 xl:grid-cols-2">
+            <MissionControl goals={goalsData?.goals || []} refreshKey={planningKey} onMissionsChange={setMissionsToday} />
+            <GoalsPanel data={goalsData} onChanged={loadGoals} />
+          </section>
+
+          <section id="insights" className="mt-5">
+            {blockNotice ? <div className="mb-3 rounded-card border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-sm text-amber-50" role="status">{blockNotice}</div> : null}
+            <InsightsPanel refreshKey={planningKey} onBlockSite={handleBlockSite} />
+          </section>
+
           <section id="analytics" className="mt-5 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
             <div className="grid gap-5">
               <Suspense fallback={<LoadingScreen compact label="Loading spice trend..." />}>
@@ -660,104 +742,18 @@ export default function DashboardPage() {
 
             <div className="grid gap-5">
               <section id="skills">
-                <Card>
-                  <div className="flex items-end justify-between gap-4">
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.34em] text-white/45">Discipline Map</div>
-                      <div className="mt-3 font-display text-3xl text-white">Skill intelligence</div>
-                    </div>
-                    <div className="rounded-full border border-amber-300/15 bg-amber-300/10 px-3 py-1 text-xs uppercase tracking-[0.28em] text-amber-100">
-                      {skillAnalysis?.completion || 0}% aligned
-                    </div>
-                  </div>
-
-                  <div className="mt-6 space-y-3">
-                    {skillAnalysis?.disciplineMap?.length ? (
-                      skillAnalysis.disciplineMap.map((skill) => (
-                        <div key={skill.skill} className="rounded-card border border-border-subtle bg-white/4 p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <div className="text-lg font-semibold text-white">{skill.skill}</div>
-                              <div className="mt-1 text-sm text-white/55">
-                                {skill.status} | level {skill.currentLevel}/5 | {skill.difficulty}
-                              </div>
-                            </div>
-                            <div className="rounded-full border border-orange-300/18 bg-orange-500/12 px-3 py-1 text-xs uppercase tracking-[0.22em] text-orange-100">
-                              priority {skill.priorityScore}
-                            </div>
-                          </div>
-                          <div className="mt-3 text-sm text-white/58">
-                            Recommended duration: {skill.durationWeeks} weeks
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <EmptyState
-                        compact
-                        title="Skill profile aligned"
-                        description="Your current skill profile already satisfies the selected role matrix."
-                      />
-                    )}
-                  </div>
-                </Card>
+                <DisciplineMap analysis={skillAnalysis} />
               </section>
 
               <section id="roadmap">
-                <Card>
-                  <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.34em] text-white/45">Ascension System</div>
-                      <div className="mt-3 font-display text-3xl text-white">Roadmap phases</div>
-                    </div>
-                    {activePhase ? (
-                      <Button
-                        variant="secondary"
-                        disabled={roadmapSubmitting === activePhase._id}
-                        onClick={() => completeRoadmapPhase(activePhase._id)}
-                      >
-                        {roadmapSubmitting === activePhase._id
-                          ? "Completing..."
-                          : `Mark ${activePhase.skill} done`}
-                      </Button>
-                    ) : null}
-                  </div>
-
-                  <div className="mt-6 space-y-4">
-                    {roadmap?.phases?.length ? (
-                      roadmap.phases.map((phase) => (
-                        <div key={phase._id} className="rounded-card border border-border-subtle bg-black/20 p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <div className="text-xs uppercase tracking-[0.28em] text-white/45">
-                                Phase {phase.phaseNumber}
-                              </div>
-                              <div className="mt-2 text-lg font-semibold text-white">{phase.skill}</div>
-                            </div>
-                            <div className="rounded-full border border-border-subtle bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.28em] text-white/70">
-                              {phase.status}
-                            </div>
-                          </div>
-                          <div className="mt-3 text-sm text-white/58">
-                            {phase.durationWeeks} weeks | {phase.difficulty} difficulty
-                          </div>
-                          <div className="mt-3 space-y-2">
-                            {phase.tasks.map((task) => (
-                              <div key={task} className="rounded-button border border-white/8 bg-white/5 px-3 py-2 text-sm text-white/68">
-                                {task}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <EmptyState
-                        compact
-                        title="Ascension path complete"
-                        description="No roadmap phases remain. Choose a new target role when you are ready for the next climb."
-                      />
-                    )}
-                  </div>
-                </Card>
+                <RoadmapPanel
+                  busy={Boolean(roadmapSubmitting)}
+                  roadmap={roadmap}
+                  onAddEvidence={addRoadmapEvidence}
+                  onComplete={completeRoadmapPhase}
+                  onRemoveEvidence={removeRoadmapEvidence}
+                  onUpdate={updateRoadmapPhase}
+                />
               </section>
             </div>
           </section>

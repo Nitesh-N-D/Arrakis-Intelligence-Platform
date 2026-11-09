@@ -23,10 +23,10 @@ export class FocusSessionRepository {
     return session ? query.session(session) : query;
   }
 
-  transition(userId, sessionId, from, update) {
+  transition(userId, sessionId, from, update, increment = null) {
     return FocusSession.findOneAndUpdate(
       { _id: sessionId, user: toObjectId(userId), active: true, status: from },
-      { $set: update },
+      { $set: update, ...(increment ? { $inc: increment } : {}) },
       { new: true, runValidators: true }
     );
   }
@@ -62,5 +62,21 @@ export class FocusSessionRepository {
       },
       { $sort: { _id: 1 } }
     ]);
+  }
+
+  /** Lightweight history for behavioural analytics: completed and abandoned sessions in the window. */
+  listSince(userId, since) {
+    return FocusSession.find({
+      user: toObjectId(userId),
+      status: { $in: ["completed", "abandoned"] },
+      $or: [{ completedAt: { $gte: since } }, { startedAt: { $gte: since } }]
+    })
+      .select("duration status startedAt completedAt pauseCount mission")
+      .sort({ startedAt: 1 })
+      .lean();
+  }
+
+  deleteOlderThan(userId, cutoff) {
+    return FocusSession.deleteMany({ user: toObjectId(userId), active: false, startedAt: { $lt: cutoff } });
   }
 }

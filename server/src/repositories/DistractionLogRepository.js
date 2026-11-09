@@ -58,4 +58,16 @@ export class DistractionLogRepository {
       }
     ]);
   }
+
+  /** Hostname/app + minutes only; page URLs and titles are never read for analytics. */
+  listSince(userId, since) {
+    return DistractionLog.find({ user: toObjectId(userId), loggedAt: { $gte: since } })
+      .select("appName duration loggedAt metadata.category metadata.site")
+      .sort({ loggedAt: 1 })
+      .lean();
+  }
+
+  deleteOlderThan(userId, cutoff) {
+    return DistractionLog.deleteMany({ user: toObjectId(userId), loggedAt: { $lt: cutoff } });
+  }
 }

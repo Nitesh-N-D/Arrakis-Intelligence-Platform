@@ -1,28 +1,43 @@
-# Extension Setup Guide
+# Extension Guide
 
-## Install
+Supported browser: **Microsoft Edge only**. The code uses the `chrome.*` extension namespace
+because Edge implements it; that is an API name, not a claim of Chrome support. Installation steps
+are in [EDGE_INSTALLATION.md](EDGE_INSTALLATION.md).
 
-1. Open `chrome://extensions` in Chrome or `edge://extensions` in Microsoft Edge
-2. Enable Developer Mode
-3. Click `Load unpacked`
-4. Select the repository `extension/` directory
+## What the extension does
 
-## Configure
+* Records the **hostname and duration** of the visible, focused tab in 10-second heartbeats and
+  sends whole minutes to `POST /storm/log` (`metadata.source: "edge-extension"`).
+* Never reads page contents, form fields, passwords, full URLs or page titles.
+* Redirects blocked hostnames (exact host or subdomain) to the Storm Zone page. In non-strict mode
+  the user can take a timed override.
 
-1. Set backend API URL, for example `http://localhost:5000/api/v1`
-2. Sign in to Arrakis on the trusted production app origin or local development origin; the short-lived access token is transferred to the extension automatically. For other local setups, paste a current access token manually.
-3. Add blocked domains
-4. Enable strict mode if you want hard blocking
-5. Choose override minutes if strict mode is disabled
-6. Save
+## Account policy sync (v1.2.0)
+
+The account is the source of truth for the blocking policy:
+
+| Field | Meaning |
+| --- | --- |
+| `blockedSites`, `strictMode`, `overrideMinutes` | Blocking rules |
+| `blockingPolicy` | `always`, `focus-only` (only while a focus session is running) or `off` |
+| `trackingPaused` | When on, the extension buffers nothing and the API discards extension logs |
+| `version` | Optimistic-concurrency counter |
+
+* **Pull:** `GET /profile/extension-policy` runs after the token handoff and then every two
+  minutes (an `alarms` timer). The policy is adopted only when its `accountId` equals the `sub`
+  claim of the signed-in token. Switching accounts resets the local policy first.
+* **Push:** saving in the popup sends `PUT /profile/extension-policy` with `baseVersion`. If the
+  account changed elsewhere the server answers `409`, the extension downloads the server copy, and
+  the popup says the newer settings were kept.
+* Without a sign-in, popup settings stay local to the browser.
+* With `focus-only`, blocking can start or stop up to two minutes after a timer starts or ends.
 
 ## Validate
 
-- open a blocked site
-- confirm the Storm Zone page appears
-- confirm override is hidden in strict mode
-- confirm distraction logs appear in the Arrakis dashboard
+* Open a blocked site and confirm the Storm Zone page appears.
+* In strict mode the override button is hidden.
+* Distraction minutes appear on the dashboard.
+* Change the blocked sites in the web app's Settings; within two minutes the popup shows the change.
 
-Access tokens are short-lived. If synchronization pauses after a token expires, open the signed-in Arrakis app to refresh the extension connection. A new account clears queued activity from the previous account. Playwright smoke tests have exercised the unpacked extension in Chromium and Microsoft Edge; account-token handoff and logout/account switching in normal Chrome and Edge profiles still require manual verification.
-
-The blocking and timed-override flow uses `chrome.storage.session`, available in Chrome 102 and later. A blocked destination stays in extension memory for at most ten minutes; the extension block-page URL contains only a random context ID, not the destination URL. Restarting or reloading the extension clears this temporary context, so the user can navigate to the blocked site again to request an override.
+The blocking flow keeps the original destination in `chrome.storage.session` for at most ten
+minutes. The block-page URL contains only a random context ID.

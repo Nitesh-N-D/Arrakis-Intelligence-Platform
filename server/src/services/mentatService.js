@@ -3,6 +3,9 @@ import { env } from "../config/env.js";
 import { ApiError } from "../utils/ApiError.js";
 import { AnalyticsService } from "./analyticsService.js";
 import { PrescienceService } from "./prescienceService.js";
+import { BehaviorService } from "./behaviorService.js";
+import { MissionRepository } from "../repositories/MissionRepository.js";
+import { localDayKey, parseTimezoneOffset } from "./insightsEngine.js";
 import { generateGemini, getRetryAfterMs, isRetryableGeminiError, validateMentatOutput } from "./mentatProvider.js";
 import { RateLimitBucketRepository } from "../repositories/RateLimitBucketRepository.js";
 
@@ -28,72 +31,97 @@ const getTrendDirection = (data, key) => {
   return "steady";
 };
 
-export const createFallbackInsight = ({ dashboard, prescience, question }) => {
+export const createFallbackInsight = ({ dashboard, prescience, question, behavior = null, missions = null }) => {
   const focusTrendDirection = getTrendDirection(dashboard.analytics.focusTrend, "totalSpice");
-  const stormTrendDirection = getTrendDirection(
-    dashboard.analytics.distractionTrend,
-    "totalMinutes"
-  );
+  const stormTrendDirection = getTrendDirection(dashboard.analytics.distractionTrend, "totalMinutes");
   const focusEfficiency = dashboard.analytics.performanceSignals?.focusEfficiency || 0;
   const distractionRatio = dashboard.analytics.performanceSignals?.distractionRatio || 0;
-  const activeRoadmapPhase = dashboard.analytics.roadmap?.phases?.find(
-    (phase) => phase.status === "active"
-  );
+  const activeRoadmapPhase = dashboard.analytics.roadmap?.phases?.find((phase) => phase.status === "active");
   const topSkill = dashboard.analytics.skillAnalysis?.disciplineMap?.[0];
+  const preferredMinutes = dashboard.operative?.preferences?.focusDurationPreference || 25;
+  const bestHour = behavior?.bestHours?.[0] || null;
+  const topDistraction = behavior?.topDistractions?.[0] || null;
+  const openPriority = (missions?.priorities || []).find((mission) => mission.status === "todo") || null;
+  const strain = prescience.workloadStrain ?? prescience.burnoutRisk;
 
-  const recommendations = [
-    focusTrendDirection === "down"
-      ? "Your spice trend softened. Protect the next morning with a guaranteed 25-minute harvest before communications."
-      : "Your spice trend is stable. Preserve momentum by starting at the same time tomorrow.",
-    stormTrendDirection === "up"
-      ? "Storm pressure is climbing. Add one distracting domain to the blocker before your next deep session."
-      : "Storm load is contained. Keep the same blocker perimeter during your highest-value hours.",
-    activeRoadmapPhase
-      ? `Advance the current ascension phase for ${activeRoadmapPhase.skill} with one task today to avoid roadmap drift.`
-      : "Your roadmap is clear. Regenerate a new target role path when you are ready for the next ascension tier.",
-    topSkill
-      ? `The next best discipline upgrade is ${topSkill.skill} because its priority score is ${topSkill.priorityScore}.`
-      : "Your current discipline matrix is aligned. Shift effort from acquisition to execution quality."
-  ].slice(0, capability.maxRecommendations);
+  const reasoning = [];
+  const recommendations = [];
+
+  if (openPriority) {
+    recommendations.push(`Start with today's priority "${openPriority.title}" before checking messages.`);
+    reasoning.push("You marked this mission as a priority for today and it is still open.");
+  }
+  if (bestHour) {
+    recommendations.push(`Your records show the most completed focus around ${bestHour.label}. Protect that hour for your hardest task.`);
+    reasoning.push(`${bestHour.share}% of your recent focus minutes fell in that hour.`);
+  } else {
+    recommendations.push(focusTrendDirection === "down"
+      ? `Focus minutes dipped recently. A single ${preferredMinutes}-minute session early in the day is a realistic restart.`
+      : "Your focus trend is steady. Starting at a similar time tomorrow helps keep it that way.");
+  }
+  if (topDistraction && topDistraction.minutes >= 30) {
+    recommendations.push(`${topDistraction.name} took ${topDistraction.minutes} minutes this week. A focus-only block for it is one option.`);
+    reasoning.push("Based on hostname and duration records only; page contents are never collected.");
+  } else {
+    recommendations.push(stormTrendDirection === "up"
+      ? "Distraction time rose compared with the previous day. Consider adding one site to your block list before your next session."
+      : "Distraction time is contained. Keep the same block list during your most valuable hours.");
+  }
+  if (activeRoadmapPhase) {
+    recommendations.push(`Move ${activeRoadmapPhase.skill} forward with one small task today.`);
+  } else if (topSkill) {
+    recommendations.push(`${topSkill.skill} is your highest-priority skill gap (priority score ${topSkill.priorityScore}).`);
+  } else {
+    recommendations.push("Your roadmap is clear. Choose the next role level when you're ready.");
+  }
 
   const warnings = [];
-  if (prescience.burnoutRisk >= 70) {
-    warnings.push("Burnout risk is elevated. Reduce context switching and shorten total meeting load.");
+  if (strain >= 70) {
+    warnings.push("Your recent workload pattern looks heavy. Shorter sessions with real breaks may be easier to sustain. This is an estimate, not a health assessment.");
   }
   if (distractionRatio >= 0.65) {
-    warnings.push("Distraction ratio is too high for compounding work. Tighten storm controls immediately.");
+    warnings.push("Distraction time is high relative to focus time this week. One extra block during focus sessions could help.");
   }
+  if (behavior?.dataSufficiency === "none" || behavior?.dataSufficiency === "limited") {
+    reasoning.push("There is limited history so far, so these suggestions are tentative.");
+  }
+
+  const nextBestAction = openPriority
+    ? `Run a ${preferredMinutes}-minute session on "${openPriority.title}".`
+    : activeRoadmapPhase
+      ? `Complete one ${activeRoadmapPhase.skill} task in a ${preferredMinutes}-minute session.`
+      : `Plan one mission for today, then start a ${preferredMinutes}-minute session.`;
 
   return {
     provider: "heuristic",
     model: "rule-engine",
     capability,
     question: question || null,
-    summary:
-      prescience.riskBand === "HIGH RISK"
-        ? "Mentat sees a fragile operating rhythm: distractions are consuming too much of your available focus."
-        : "Mentat sees a recoverable rhythm with clear leverage in scheduling and disciplined task sequencing.",
-    dailyRecommendations: recommendations,
+    summary: prescience.riskBand === "HIGH RISK"
+      ? "Distractions are taking a large share of your available focus time. A smaller, protected plan for tomorrow is a good next step."
+      : "Your rhythm is recoverable, with clear gains available from scheduling and task order.",
+    dailyRecommendations: recommendations.slice(0, capability.maxRecommendations),
     warnings,
-    nextBestAction: activeRoadmapPhase
-      ? `Complete one task from ${activeRoadmapPhase.skill} and finish at least one ${dashboard.operative?.preferences?.focusDurationPreference || 25}-minute harvest.`
-      : "Secure a 25-minute harvest and log any distraction source that breaks your start ritual.",
+    nextBestAction,
+    reasoning,
     focusSchedule: {
-      recommendedStartHour: prescience.averages.distractionMinutes > 100 ? "08:30" : "09:00",
+      recommendedStartHour: bestHour ? `${String(bestHour.hour).padStart(2, "0")}:00` : prescience.averages?.distractionMinutes > 100 ? "08:30" : "09:00",
       recommendedPrimarySession: focusEfficiency >= 75 ? 50 : 25,
-      recommendedRecoveryWindow:
-        prescience.burnoutRisk >= 70
-          ? "Take a 15-minute reset after each focus block."
-          : "Use a 5-minute reset between harvests."
+      recommendedRecoveryWindow: strain >= 70 ? "Take a 15-minute break after each focus block." : "Use 5-minute breaks between sessions."
     },
     signals: {
       burnoutRisk: prescience.burnoutRisk,
+      workloadStrain: strain,
       focusEfficiency,
       distractionRatio,
-      streak: dashboard.operative?.focusStreak || 0
-    }
+      streak: dashboard.operative?.focusStreak || 0,
+      dataSufficiency: behavior?.dataSufficiency || "unknown"
+    },
+    disclaimer: "Suggestions are generated from your own aggregated activity. They are not medical or psychological advice."
   };
 };
+
+const remoteReasoning = ["Generated from aggregated totals only. Mission titles, goal text and site names were not shared with the AI provider."];
 
 const tryParseJson = (value) => {
   try {
@@ -103,16 +131,22 @@ const tryParseJson = (value) => {
   }
 };
 
-const compactContext = ({ dashboard, prescience, question }) => ({
+// Only aggregates leave the server. Mission titles, goal text and site names stay local.
+export const compactContext = ({ dashboard, prescience, question, behavior = null, missions = null }) => ({
   observed: {
     focusLastSevenDays: dashboard.analytics.performanceSignals?.totalFocusMinutes || 0,
     distractionLastSevenDays: dashboard.analytics.performanceSignals?.totalDistractionMinutes || 0,
     focusEfficiency: dashboard.analytics.performanceSignals?.focusEfficiency || 0,
     distractionRatio: dashboard.analytics.performanceSignals?.distractionRatio || 0,
     streak: dashboard.operative?.focusStreak || 0,
-    burnoutRisk: prescience.burnoutRisk,
+    workloadStrain: prescience.workloadStrain ?? prescience.burnoutRisk,
     activeRoadmapSkill: dashboard.analytics.roadmap?.phases?.find((phase) => phase.status === "active")?.skill || null,
-    leadingSkillGaps: (dashboard.analytics.skillAnalysis?.disciplineMap || []).slice(0, 3).map(({ skill, priorityScore }) => ({ skill, priorityScore }))
+    leadingSkillGaps: (dashboard.analytics.skillAnalysis?.disciplineMap || []).slice(0, 3).map(({ skill, priorityScore }) => ({ skill, priorityScore })),
+    bestFocusHours: (behavior?.bestHours || []).map(({ hour, share }) => ({ hour, share })),
+    sessionCompletionRate: behavior?.sessionSuccess?.rate ?? null,
+    consistencyRate: behavior?.consistency?.rate ?? null,
+    dataSufficiency: behavior?.dataSufficiency || "unknown",
+    missionsToday: missions ? { total: missions.total, done: missions.done, openPriorities: (missions.priorities || []).filter((mission) => mission.status === "todo").length } : null
   },
   question: String(question || "").slice(0, 500)
 });
@@ -157,25 +191,55 @@ export class MentatService {
   constructor({
     analyticsService = new AnalyticsService(),
     prescienceService = new PrescienceService(),
+    behaviorService = null,
+    missionRepository = null,
     configuration = env,
     generator = generateGemini,
-    budgetCheck = checkMentatBudget
+    budgetCheck = checkMentatBudget,
+    clock = () => new Date()
   } = {}) {
-    Object.assign(this, { analyticsService, prescienceService, configuration, generator, budgetCheck });
+    Object.assign(this, { analyticsService, prescienceService, behaviorService, missionRepository, configuration, generator, budgetCheck, clock });
   }
 
-  async buildContext(user, question = "") {
-    const [dashboard, prescience] = await Promise.all([
+  getBehaviorService() {
+    if (this.behaviorService === null) this.behaviorService = new BehaviorService();
+    return this.behaviorService;
+  }
+
+  getMissionRepository() {
+    if (this.missionRepository === null) this.missionRepository = new MissionRepository();
+    return this.missionRepository;
+  }
+
+  /** Behavior and mission context are optional: Mentat still answers if either source is unavailable. */
+  async loadPlanningContext(user, tzOffset) {
+    const tz = parseTimezoneOffset(tzOffset);
+    const [behavior, todays] = await Promise.all([
+      this.getBehaviorService().behavior(user, { tzOffset: tz }).catch(() => null),
+      this.getMissionRepository().listByDay(user.id, localDayKey(this.clock(), tz)).catch(() => null)
+    ]);
+    const active = (todays || []).filter((mission) => mission.status !== "dropped");
+    const missions = todays ? {
+      total: active.length,
+      done: active.filter((mission) => mission.status === "done").length,
+      priorities: active.filter((mission) => mission.priority).map((mission) => ({ title: mission.title, status: mission.status }))
+    } : null;
+    return { behavior, missions };
+  }
+
+  async buildContext(user, question = "", tzOffset = 0) {
+    const [dashboard, prescience, planning] = await Promise.all([
       this.analyticsService.getDashboard(user),
-      this.prescienceService.analyze(user)
+      this.prescienceService.analyze(user),
+      this.loadPlanningContext(user, tzOffset)
     ]);
 
-    return { dashboard, prescience, question: String(question || "").slice(0, 500) };
+    return { dashboard, prescience, ...planning, question: String(question || "").slice(0, 500) };
   }
 
   async analyze(user, payload = {}) {
     await this.budgetCheck(user.id, this.configuration);
-    const context = await this.buildContext(user, payload.question || "");
+    const context = await this.buildContext(user, payload.question || "", payload.tzOffset);
 
     if (this.configuration.mentatProvider === "gemini" && this.configuration.geminiApiKey) {
       try {
@@ -184,7 +248,7 @@ export class MentatService {
           generator: this.generator
         });
         const authoritative = createFallbackInsight(context);
-        return { ...authoritative, ...model, provider: "gemini", model: this.configuration.geminiModel, capability };
+        return { ...authoritative, ...model, reasoning: remoteReasoning, provider: "gemini", model: this.configuration.geminiModel, capability };
       } catch (_error) {
         return {
           ...createFallbackInsight(context), degraded: true,
@@ -200,6 +264,7 @@ export class MentatService {
         return {
           ...createFallbackInsight(context),
           ...remote,
+          reasoning: remoteReasoning,
           provider: "openai",
           capability
         };

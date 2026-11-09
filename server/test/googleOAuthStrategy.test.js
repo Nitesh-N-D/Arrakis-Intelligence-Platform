@@ -70,7 +70,8 @@ test("Google strategy creates a new account from a verified email", async () => 
     name: "New User",
     email: "new@example.test",
     provider: "google",
-    googleId: "google-3"
+    googleId: "google-3",
+    career: { selectionPending: true }
   }]);
 });
 

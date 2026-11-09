@@ -2,9 +2,11 @@ import { ProfileService } from "../services/profileService.js";
 import { AccountDataService } from "../services/accountDataService.js";
 import { clearRefreshTokenCookie } from "../utils/cookies.js";
 import { getIo } from "../socket/index.js";
+import { FocusSessionRepository } from "../repositories/FocusSessionRepository.js";
 
 const profileService = new ProfileService();
 const accountDataService = new AccountDataService();
+const focusSessionRepository = new FocusSessionRepository();
 
 export class ProfileController {
   async show(req, res) {
@@ -20,6 +22,16 @@ export class ProfileController {
   async updateSettings(req, res) {
     const profile = await profileService.updateSettings(req.user.id, req.body);
     res.json({ success: true, data: profile, message: "Settings updated successfully" });
+  }
+
+  async extensionPolicy(req, res) {
+    const policy = await profileService.getExtensionPolicy(req.user.id, { focusSessionRepository });
+    res.json({ success: true, data: policy });
+  }
+
+  async updateExtensionPolicy(req, res) {
+    const policy = await profileService.updateExtensionPolicy(req.user.id, req.body);
+    res.json({ success: true, data: policy, message: "Extension settings synced" });
   }
 
   async exportAccount(req, res) {

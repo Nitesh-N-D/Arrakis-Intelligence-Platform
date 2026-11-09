@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import CareerChangeDialog from "../components/career/CareerChangeDialog";
+import CareerPreferences from "../components/career/CareerPreferences";
+import CareerRoleSelector from "../components/career/CareerRoleSelector";
+import { selectionFromCareer, toCareerPayload, validateSelection } from "../components/career/careerSelectorModel";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import Navbar from "../components/ui/Navbar";
@@ -40,9 +44,11 @@ export default function ProfilePage() {
     name: "",
     avatarUrl: "",
     bio: "",
-    targetRole: "AI Systems Engineer",
     skillsText: ""
   });
+  const [career, setCareer] = useState(() => selectionFromCareer(null));
+  const [careerErrors, setCareerErrors] = useState({});
+  const [pendingImpact, setPendingImpact] = useState(null);
   const [profile, setProfile] = useState(null);
 
   useEffect(() => {
@@ -58,9 +64,9 @@ export default function ProfilePage() {
           name: response.data.name || "",
           avatarUrl: response.data.avatarUrl || "",
           bio: response.data.bio || "",
-          targetRole: response.data.targetRole || "AI Systems Engineer",
           skillsText: serializeSkills(response.data.skills || [])
         });
+        setCareer(selectionFromCareer(response.data.career));
       } catch (error) {
         setToast({ open: true, message: error.message || "Unable to load profile.", type: "error" });
       } finally {
@@ -80,27 +86,65 @@ export default function ProfilePage() {
     [profile, user]
   );
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setSaving(true);
+  const showToast = (message, type) => {
+    setToast({ open: true, message, type });
+    setTimeout(() => setToast({ open: false, message: "", type: "info" }), 2600);
+  };
 
+  const careerChanged = () =>
+    JSON.stringify(toCareerPayload(career)) !== JSON.stringify(toCareerPayload(selectionFromCareer(profile?.career)));
+
+  const persist = async (confirmRoadmapChange = false) => {
+    setSaving(true);
     try {
       const response = await platformService.updateProfile({
         name: form.name,
         avatarUrl: form.avatarUrl,
         bio: form.bio,
-        targetRole: form.targetRole,
+        ...(careerChanged() ? { career: toCareerPayload(career), confirmRoadmapChange } : {}),
         skills: parseSkills(form.skillsText)
       });
       setProfile(response.data);
+      setCareer(selectionFromCareer(response.data.career));
       setUser((current) => (current ? { ...current, ...response.data } : response.data));
-      setToast({ open: true, message: "Profile updated successfully.", type: "success" });
+      setPendingImpact(null);
+      showToast("Profile updated successfully.", "success");
     } catch (error) {
-      setToast({ open: true, message: error.message || "Unable to save profile.", type: "error" });
+      if (error.statusCode === 409) {
+        // The roadmap has progress: show what changes, then let the user confirm.
+        const preview = await platformService.previewCareer(toCareerPayload(career)).catch(() => null);
+        if (preview?.data?.impact) setPendingImpact(preview.data.impact);
+        else showToast(error.message || "Confirm the roadmap change to continue.", "error");
+      } else {
+        showToast(error.message || "Unable to save profile.", "error");
+      }
     } finally {
       setSaving(false);
-      setTimeout(() => setToast({ open: false, message: "", type: "info" }), 2200);
     }
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const errors = validateSelection(career);
+    setCareerErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    if (careerChanged()) {
+      setSaving(true);
+      try {
+        const preview = await platformService.previewCareer(toCareerPayload(career));
+        if (preview.data?.impact?.requiresConfirmation && preview.data.impact.from !== preview.data.impact.to) {
+          setPendingImpact(preview.data.impact);
+          return;
+        }
+      } catch (error) {
+        showToast(error.message || "That career could not be checked.", "error");
+        return;
+      } finally {
+        setSaving(false);
+      }
+    }
+    await persist(false);
   };
 
   return (
@@ -157,10 +201,24 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div>
-                  <label htmlFor="profile-target-role" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Target Role</label>
-                  <input id="profile-target-role" className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3" value={form.targetRole} onChange={(event) => setForm((current) => ({ ...current, targetRole: event.target.value }))} />
-                </div>
+                <CareerRoleSelector
+                  errors={careerErrors}
+                  idPrefix="profile-career"
+                  label="Target career"
+                  value={career}
+                  onChange={(next) => { setCareer(next); setCareerErrors({}); }}
+                />
+                <details className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+                  <summary className="cursor-pointer text-sm font-semibold text-white">Experience, target level and timeline</summary>
+                  <div className="mt-4">
+                    <CareerPreferences idPrefix="profile-pref" selection={career} onChange={setCareer} />
+                  </div>
+                </details>
+                {profile?.careerHistory?.length ? (
+                  <p className="text-xs text-white/45">
+                    Previous careers: {profile.careerHistory.slice(-3).map((entry) => entry.title).join(", ")}. Completed roadmap phases from them are kept.
+                  </p>
+                ) : null}
 
                 <div>
                   <label htmlFor="profile-bio" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Bio</label>
@@ -192,6 +250,13 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+      <CareerChangeDialog
+        busy={saving}
+        impact={pendingImpact}
+        open={Boolean(pendingImpact)}
+        onCancel={() => setPendingImpact(null)}
+        onConfirm={() => persist(true)}
+      />
     </div>
   );
 }

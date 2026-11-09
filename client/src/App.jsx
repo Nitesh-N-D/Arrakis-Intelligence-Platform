@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import LoadingScreen from "./components/ui/LoadingScreen";
 import { useAuth } from "./hooks/useAuth";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
+import CareerOnboardingPage, { ONBOARDING_DEFER_KEY } from "./pages/CareerOnboardingPage";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import NotFoundPage from "./pages/NotFoundPage";
@@ -10,16 +11,33 @@ import RegisterPage from "./pages/RegisterPage";
 import SettingsPage from "./pages/SettingsPage";
 import Privacy from "./pages/Privacy";
 
+const ONBOARDING_PATH = "/onboarding/career";
+
+const onboardingDeferred = () => {
+  try {
+    return sessionStorage.getItem(ONBOARDING_DEFER_KEY) === "1";
+  } catch (_error) {
+    return false;
+  }
+};
 
 const ProtectedRoute = ({ children }) => {
-  const { accessToken, bootstrapping } = useAuth();
+  const { accessToken, bootstrapping, user } = useAuth();
   const location = useLocation();
 
   if (bootstrapping) {
     return <LoadingScreen label="Restoring your session..." />;
   }
 
-  return accessToken ? children : <Navigate to="/login" replace state={{ from: location }} />;
+  if (!accessToken) return <Navigate to="/login" replace state={{ from: location }} />;
+
+  // New accounts that have not chosen a career (Google sign-ups) see career onboarding once.
+  // Existing accounts never carry this flag, so they are not interrupted.
+  if (user?.career?.selectionPending && location.pathname !== ONBOARDING_PATH && !onboardingDeferred()) {
+    return <Navigate to={ONBOARDING_PATH} replace />;
+  }
+
+  return children;
 };
 
 const PublicOnlyRoute = ({ children }) => {
@@ -59,6 +77,14 @@ export default function App() {
       />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
       <Route
+        path={ONBOARDING_PATH}
+        element={
+          <ProtectedRoute>
+            <CareerOnboardingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/profile"
         element={
           <ProtectedRoute>
@@ -82,8 +108,8 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      <Route path="*" element={<NotFoundPage />} />
       <Route path="/privacy" element={<Privacy />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

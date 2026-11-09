@@ -65,6 +65,18 @@
   if (isTrustedArrakisOrigin()) {
     window.addEventListener("message", (event) => {
       if (event.source !== window || event.origin !== window.location.origin) return;
+      if (event.data?.source === "arrakis-platform" && event.data?.type === "EXTENSION_PING") {
+        const nonce = typeof event.data.nonce === "string" ? event.data.nonce.slice(0, 64) : "";
+        if (!nonce) return;
+        chrome.runtime.sendMessage(
+          { type: "GET_HANDSHAKE_STATUS", payload: { userId: typeof event.data.userId === "string" ? event.data.userId : "" } },
+          (response) => {
+            if (chrome.runtime.lastError || !response?.ok) return;
+            window.postMessage({ source: "arrakis-extension", type: "EXTENSION_HELLO", nonce, status: response.status }, window.location.origin);
+          }
+        );
+        return;
+      }
       if (event.data?.source !== "arrakis-platform" || event.data?.type !== "ACCESS_TOKEN_UPDATE") return;
       chrome.runtime.sendMessage({
         type: "SYNC_ACCESS_TOKEN",

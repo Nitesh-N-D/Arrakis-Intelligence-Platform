@@ -12,6 +12,8 @@ const accountDataLimit = rateLimitMiddleware({ namespace: "account-data", window
 router.get("/", protect, asyncHandler(controller.show.bind(controller)));
 router.patch("/", protect, profileWriteLimit, asyncHandler(controller.update.bind(controller)));
 router.patch("/settings", protect, profileWriteLimit, asyncHandler(controller.updateSettings.bind(controller)));
+router.get("/extension-policy", protect, asyncHandler(controller.extensionPolicy.bind(controller)));
+router.put("/extension-policy", protect, profileWriteLimit, asyncHandler(controller.updateExtensionPolicy.bind(controller)));
 router.get("/export", protect, accountDataLimit, asyncHandler(controller.exportAccount.bind(controller)));
 router.delete("/account", protect, accountDataLimit, asyncHandler(controller.deleteAccount.bind(controller)));
 

@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import { DistractionLog } from "../models/DistractionLog.js";
 import { FocusSession } from "../models/FocusSession.js";
+import { Goal } from "../models/Goal.js";
+import { Mission } from "../models/Mission.js";
 import { RoadmapPlan } from "../models/RoadmapPlan.js";
 import { Team } from "../models/Team.js";
 import { User } from "../models/User.js";
@@ -21,10 +23,12 @@ export class AccountDataService {
     const user = await User.findById(userId).populate("team", "name").lean();
     if (!user) throw new ApiError(404, "User not found");
 
-    const [focusSessions, distractionLogs, roadmap] = await Promise.all([
+    const [focusSessions, distractionLogs, roadmap, missions, goals] = await Promise.all([
       FocusSession.find({ user: userId }).sort({ startedAt: 1 }).lean(),
       DistractionLog.find({ user: userId }).sort({ loggedAt: 1 }).lean(),
-      RoadmapPlan.findOne({ user: userId }).lean()
+      RoadmapPlan.findOne({ user: userId }).lean(),
+      Mission.find({ user: userId }).sort({ day: 1, order: 1 }).lean(),
+      Goal.find({ user: userId }).sort({ createdAt: 1 }).lean()
     ]);
 
     const { _id, __v, passwordHash, googleId, ...profile } = user;
@@ -39,7 +43,9 @@ export class AccountDataService {
       },
       focusSessions,
       distractionLogs,
-      roadmap
+      roadmap,
+      missions,
+      goals
     };
   }
 
@@ -105,6 +111,8 @@ export class AccountDataService {
         await FocusSession.deleteMany({ user: currentUser._id }, { session });
         await DistractionLog.deleteMany({ user: currentUser._id }, { session });
         await RoadmapPlan.deleteMany({ user: currentUser._id }, { session });
+        await Mission.deleteMany({ user: currentUser._id }, { session });
+        await Goal.deleteMany({ user: currentUser._id }, { session });
         await this.refreshTokenRepository.deleteByUserId(currentUser._id, { session });
         await User.deleteOne({ _id: currentUser._id }, { session });
       });

@@ -70,9 +70,15 @@ saveButton.addEventListener("click", async () => {
 
     blockedSitesInput.value = (response.settings?.blockedSites || []).join("\n");
     backendUrlInput.value = response.settings?.backendUrl || backendUrl;
+    const syncMessages = {
+      synced: "Settings saved and synced to your Arrakis account.",
+      conflict: "Your Arrakis account had newer settings, so those were kept and loaded here.",
+      "local-only": "Settings saved in this browser. Sign in to Arrakis to sync them to your account.",
+      error: "Settings saved in this browser, but syncing to Arrakis failed. Your account's settings are reloaded every few minutes, so save again once you are back online."
+    };
     renderStatus({
-      state: "success",
-      message: "Storm control settings saved.",
+      state: response.sync === "error" || response.sync === "conflict" ? "warning" : "success",
+      message: syncMessages[response.sync] || "Storm control settings saved.",
       updatedAt: new Date().toISOString()
     });
   } catch (error) {

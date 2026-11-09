@@ -8,6 +8,9 @@ const analyticsService = new AnalyticsService();
 export class StormController {
   async log(req, res) {
     const result = await stormService.logDistraction(req.user, req.body);
+    if (result.skipped) {
+      return res.status(200).json({ success: true, data: { skipped: true, reason: result.reason } });
+    }
     const io = getIo();
 
     if (io) {

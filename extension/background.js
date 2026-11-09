@@ -1,4 +1,4 @@
-import { getHostFromUrl, getJwtSubject, getNextPendingSyncAt, getSafeExtensionErrorMessage, isOverrideActive, matchesBlockedSite, normalizePattern, shouldClearActivityForAccount } from "./domainRules.js";
+import { buildHandshakeStatus, detectBrowser, isBlockingActive, normalizeExtensionPolicy, getHostFromUrl, getJwtSubject, getNextPendingSyncAt, getSafeExtensionErrorMessage, isOverrideActive, matchesBlockedSite, normalizePattern, shouldClearActivityForAccount } from "./domainRules.js";
 
 const DEFAULT_SETTINGS = {
   backendUrl: "http://localhost:5000/api/v1",
@@ -9,6 +9,12 @@ const DEFAULT_SETTINGS = {
   overrideMinutes: 5,
   activityBuffer: {},
   temporaryOverrides: {},
+  blockingPolicy: "always",
+  trackingPaused: false,
+  focusActive: false,
+  policyVersion: 0,
+  policyAccount: "",
+  policySyncedAt: null,
   lastDeliveryStatus: {
     state: "idle",
     message: "Extension not configured yet.",
@@ -22,6 +28,9 @@ const PENDING_SYNC_TTL_MS = 24 * 60 * 60 * 1000;
 const PENDING_SYNC_ALARM = "arrakis-pending-storm-sync";
 const BLOCK_CONTEXT_ALARM_PREFIX = "arrakis-block-context-expiry:";
 const PENDING_SYNC_MAX_ATTEMPTS = 8;
+const POLICY_SYNC_ALARM = "arrakis-policy-sync";
+const POLICY_SYNC_MINUTES = 2;
+const LOCAL_POLICY_KEYS = ["blockedSites", "strictMode", "overrideMinutes", "blockingPolicy", "trackingPaused", "focusActive", "policyVersion", "policyAccount", "policySyncedAt"];
 let activityWriteQueue = Promise.resolve();
 let defaultsInitialization = null;
 const blockRedirectsByTab = new Map();
@@ -31,6 +40,7 @@ chrome.runtime.onInstalled.addListener(async () => {
   await scrubLegacyActivityBuffer();
   await purgeExpiredBlockContexts();
   await retryPendingStormSync();
+  await schedulePolicySync();
 });
 
 chrome.runtime.onStartup.addListener(async () => {
@@ -39,12 +49,17 @@ chrome.runtime.onStartup.addListener(async () => {
   await purgeExpiredOverrides();
   await purgeExpiredBlockContexts();
   await retryPendingStormSync();
+  await schedulePolicySync();
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name.startsWith(BLOCK_CONTEXT_ALARM_PREFIX)) {
     const contextId = alarm.name.slice(BLOCK_CONTEXT_ALARM_PREFIX.length);
     await chrome.storage.session.remove(`blockedContext:${contextId}`);
+    return;
+  }
+  if (alarm.name === POLICY_SYNC_ALARM) {
+    await syncExtensionPolicy().catch(() => null);
     return;
   }
   if (alarm.name !== PENDING_SYNC_ALARM) return;
@@ -98,6 +113,8 @@ async function handleRuntimeMessage(message, sender) {
       return { ok: true, settings: await getSettings() };
     case "SAVE_SETTINGS":
       return handleSaveSettings(message.payload, sender);
+    case "GET_HANDSHAKE_STATUS":
+      return handleHandshakeStatus(message.payload, sender);
     default:
       return { ok: false, error: "Unknown message type" };
   }
@@ -176,7 +193,8 @@ async function handleSaveSettings(payload, sender) {
     strictMode: Boolean(payload?.strictMode),
     overrideMinutes
   });
-  return { ok: true, settings: await getSettings() };
+  const sync = await pushExtensionPolicy({ blockedSites, strictMode: Boolean(payload?.strictMode), overrideMinutes }).catch(() => "error");
+  return { ok: true, sync, settings: await getSettings() };
 }
 
 async function setLastDeliveryStatus(state, message) {
@@ -237,9 +255,91 @@ async function handleSyncAccessToken(payload, sender) {
   const hasQueuedActivity = Object.keys(settings.activityBuffer || {}).length > 0;
   const activityBuffer = shouldClearActivityForAccount(settings.accountSubject, subject, hasQueuedActivity) ? {} : settings.activityBuffer;
   await chrome.storage.local.set({ jwtToken: token, accountSubject: subject, activityBuffer });
+  if (settings.policyAccount && settings.policyAccount !== subject) await resetLocalPolicy();
   await setLastDeliveryStatus("success", "Arrakis account connected to the extension.");
+  await syncExtensionPolicy().catch(() => null);
+  await schedulePolicySync();
   await resumePendingStormSync();
   return { ok: true };
+}
+
+async function handleHandshakeStatus(payload, sender) {
+  if (!isTrustedArrakisClientUrl(sender?.tab?.url)) return { ok: false, error: "Untrusted Arrakis client origin" };
+  const expectedSubject = typeof payload?.userId === "string" ? payload.userId.slice(0, 64) : "";
+  const status = buildHandshakeStatus({
+    manifest: chrome.runtime.getManifest(),
+    settings: await getSettings(),
+    browser: detectBrowser(globalThis.navigator?.userAgentData, globalThis.navigator?.userAgent),
+    expectedSubject
+  });
+  return { ok: true, status };
+}
+
+async function schedulePolicySync() {
+  const existing = await chrome.alarms.get(POLICY_SYNC_ALARM).catch(() => null);
+  if (!existing) await chrome.alarms.create(POLICY_SYNC_ALARM, { periodInMinutes: POLICY_SYNC_MINUTES });
+}
+
+async function resetLocalPolicy() {
+  const reset = {};
+  for (const key of LOCAL_POLICY_KEYS) reset[key] = DEFAULT_SETTINGS[key];
+  await chrome.storage.local.set(reset);
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 10_000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Pulls the account's blocking policy from Arrakis. The policy is adopted only when its accountId
+ * matches the subject of the signed-in token, so one account's rules never leak into another's.
+ */
+async function syncExtensionPolicy() {
+  const settings = await getSettings();
+  const subject = getJwtSubject(settings.jwtToken);
+  if (!subject) return "auth-required";
+  const response = await fetchWithTimeout(`${normalizeBackendUrl(settings.backendUrl)}/profile/extension-policy`, {
+    headers: { Authorization: `Bearer ${settings.jwtToken}` }
+  });
+  if (response.status === 401) return "auth-required";
+  if (!response.ok) return "error";
+  const body = await response.json().catch(() => null);
+  const next = normalizeExtensionPolicy(body?.data, subject);
+  if (!next) return "rejected";
+  await chrome.storage.local.set(next);
+  return "synced";
+}
+
+/** Sends popup changes to Arrakis with optimistic concurrency. On a conflict the server copy wins. */
+async function pushExtensionPolicy(changes) {
+  const settings = await getSettings();
+  const subject = getJwtSubject(settings.jwtToken);
+  if (!subject) return "local-only";
+  if (settings.policyAccount !== subject) {
+    const pulled = await syncExtensionPolicy();
+    if (pulled !== "synced") return "local-only";
+  }
+  const current = await getSettings();
+  const response = await fetchWithTimeout(`${normalizeBackendUrl(current.backendUrl)}/profile/extension-policy`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${current.jwtToken}` },
+    body: JSON.stringify({ ...changes, baseVersion: Number(current.policyVersion) || 0 })
+  });
+  if (response.status === 409) {
+    await syncExtensionPolicy();
+    return "conflict";
+  }
+  if (!response.ok) return "error";
+  const body = await response.json().catch(() => null);
+  const next = normalizeExtensionPolicy(body?.data, subject);
+  if (next) await chrome.storage.local.set(next);
+  return next ? "synced" : "error";
 }
 
 async function ensureActivityAccount(settings) {
@@ -317,7 +417,7 @@ async function enforceStormZone(tabId, url) {
     return false;
   }
 
-  if (!matchesBlockedSite(url, settings.blockedSites)) {
+  if (!isBlockingActive(settings) || !matchesBlockedSite(url, settings.blockedSites)) {
     return false;
   }
 
@@ -443,6 +543,9 @@ async function processTrackSiteActivity(payload) {
   }
 
   const settings = await ensureActivityAccount(await getSettings());
+  if (settings.trackingPaused) {
+    return { ok: true, paused: true, bufferedSeconds: 0, flushedMinutes: 0 };
+  }
   const normalizedHost = normalizePattern(payload.host);
 
   if (!normalizedHost) {
@@ -521,7 +624,7 @@ async function postStormLog(settings, host, pendingSync) {
         metadata: {
           device: "desktop",
           category: categorizeSite(host),
-          source: "chrome-extension",
+          source: "edge-extension",
           trackedSeconds: pendingSync.minutes * 60,
           heartbeatSeconds: HEARTBEAT_SECONDS
         }
@@ -534,6 +637,12 @@ async function postStormLog(settings, host, pendingSync) {
     }
     if (!response.ok) {
       throw new Error(`Storm API returned HTTP ${response.status}`);
+    }
+
+    const body = await response.json().catch(() => null);
+    if (body?.data?.skipped) {
+      await setLastDeliveryStatus("success", "Activity tracking is paused in your Arrakis settings; queued activity was discarded.");
+      return true;
     }
 
     await setLastDeliveryStatus(

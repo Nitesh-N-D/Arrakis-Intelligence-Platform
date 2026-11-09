@@ -6,6 +6,7 @@ import { LeaderboardService } from "./leaderboardService.js";
 import { RankEngine } from "./rankEngine.js";
 import { SpiceEngine } from "./spiceEngine.js";
 import mongoose from "mongoose";
+import { FOCUS_LIMITS, isValidFocusDuration } from "./focusLimits.js";
 
 const transactionRunner = async (work) => {
   const session = await mongoose.startSession();
@@ -18,8 +19,8 @@ const transactionRunner = async (work) => {
   }
 };
 
-const validDurations = [25, 50];
-const validTypes = ["pomodoro-25", "deep-50", "custom"];
+const typeForDuration = (duration) => (duration === 25 ? "pomodoro-25" : duration === 50 ? "deep-50" : "custom");
+
 
 export class FocusService {
   constructor({
@@ -29,30 +30,39 @@ export class FocusService {
     leaderboardService = new LeaderboardService(),
     rankEngine = new RankEngine(),
     spiceEngine = new SpiceEngine(),
-    runTransaction = transactionRunner
+    runTransaction = transactionRunner,
+    missionService = null
   } = {}) {
-    Object.assign(this, { focusSessionRepository, userRepository, operativeStateService, leaderboardService, rankEngine, spiceEngine, runTransaction });
+    Object.assign(this, { focusSessionRepository, userRepository, operativeStateService, leaderboardService, rankEngine, spiceEngine, runTransaction, missionService });
+  }
+
+  async getMissionService() {
+    if (!this.missionService) {
+      const { MissionService } = await import("./missionService.js");
+      this.missionService = new MissionService();
+    }
+    return this.missionService;
   }
 
   validateSession(payload) {
     const duration = Number(payload?.duration);
-    const type = String(payload?.type || "").trim() || (duration === 50 ? "deep-50" : "pomodoro-25");
 
-    if (!validDurations.includes(duration)) {
-      throw new ApiError(400, "Focus duration must be either 25 or 50 minutes");
+    if (!isValidFocusDuration(duration)) {
+      throw new ApiError(
+        400,
+        `Focus duration must be a whole number of minutes between ${FOCUS_LIMITS.minMinutes} and ${FOCUS_LIMITS.maxMinutes}`
+      );
     }
 
-    if (!validTypes.includes(type)) {
-      throw new ApiError(400, "Focus session type is invalid");
-    }
-
-    return { duration, type };
+    // The session type is derived on the server; a client-supplied type is never trusted.
+    return { duration, type: typeForDuration(duration) };
   }
 
   async createSession(user, payload) {
     const { duration, type } = this.validateSession(payload);
     const active = await this.focusSessionRepository.findActiveByUser(user.id);
     if (active) throw new ApiError(409, "Finish, resume, or reset your active focus session first.");
+    const mission = payload?.missionId ? await (await this.getMissionService()).findOwnedMission(user, payload.missionId) : null;
     try {
       const session = await this.focusSessionRepository.create({
         user: user.id,
@@ -65,7 +75,8 @@ export class FocusService {
         startedAt: new Date(),
         completedAt: null,
         remainingMs: null,
-        notes: String(payload.notes || "").trim().slice(0, 500)
+        notes: String(payload.notes || "").trim().slice(0, 500),
+        mission: mission?._id || null
       });
       return { session };
     } catch (error) {
@@ -86,7 +97,7 @@ export class FocusService {
     }
     const now = new Date();
     const remainingMs = Math.max(0, session.duration * 60_000 - (now - session.startedAt));
-    const updated = await this.focusSessionRepository.transition(user.id, sessionId, "running", { status: "paused", remainingMs });
+    const updated = await this.focusSessionRepository.transition(user.id, sessionId, "running", { status: "paused", remainingMs }, { pauseCount: 1 });
     if (!updated) throw new ApiError(409, "Focus session state changed. Refresh and try again.");
     return updated;
   }
@@ -135,6 +146,14 @@ export class FocusService {
       return this.awardCompletedSession(user, completed, dbSession);
     });
     result.updatedTeam = await this.leaderboardService.syncTeamTotals(result.updatedUser.team);
+    if (!result.alreadyCompleted && result.session?.mission) {
+      // Focus allocation: credit the linked mission. Best effort; the harvest itself is already committed.
+      try {
+        await (await this.getMissionService()).recordFocus(user.id, result.session.mission, result.session.duration);
+      } catch {
+        // A deleted mission must never turn a successful harvest into an error.
+      }
+    }
     return result;
   }
 
