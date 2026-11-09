@@ -1,7 +1,9 @@
 import { buildHandshakeStatus, detectBrowser, isBlockingActive, normalizeExtensionPolicy, getHostFromUrl, getJwtSubject, getNextPendingSyncAt, getSafeExtensionErrorMessage, isOverrideActive, matchesBlockedSite, normalizePattern, shouldClearActivityForAccount } from "./domainRules.js";
 
+const PRODUCTION_BACKEND_URL = "https://arrakis-intelligence-platform.onrender.com/api/v1";
+const PRODUCTION_CLIENT_ORIGIN = "https://arrakis-intelligence-platform.vercel.app";
 const DEFAULT_SETTINGS = {
-  backendUrl: "http://localhost:5000/api/v1",
+  backendUrl: PRODUCTION_BACKEND_URL,
   jwtToken: "",
   accountSubject: "",
   blockedSites: [],
@@ -86,7 +88,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   void handleRuntimeMessage(message, sender)
     .then((response) => sendResponse(response))
     .catch((error) => {
-      console.error("Arrakis extension action failed.");
       sendResponse({
         ok: false,
         error: getSafeExtensionErrorMessage(error)
@@ -131,6 +132,9 @@ async function initializeDefaults() {
           nextValues[key] = value;
         }
       }
+
+      // Upgrade old developer installs to the production API before any sync request is made.
+      if (stored.backendUrl !== PRODUCTION_BACKEND_URL) nextValues.backendUrl = PRODUCTION_BACKEND_URL;
 
       if (Object.keys(nextValues).length > 0) {
         await chrome.storage.local.set(nextValues);
@@ -180,15 +184,8 @@ async function handleSaveSettings(payload, sender) {
   const blockedSites = Array.isArray(payload?.blockedSites)
     ? [...new Set(payload.blockedSites.map(normalizePattern).filter(Boolean))].slice(0, 500)
     : [];
-  const backendUrl = normalizeBackendUrl(payload?.backendUrl);
-  if (!backendUrl) return { ok: false, error: "Use an HTTPS backend URL (HTTP is allowed only for localhost)." };
-  const jwtToken = typeof payload?.jwtToken === "string" && payload.jwtToken.length <= 4096
-    ? payload.jwtToken.trim()
-    : "";
   const overrideMinutes = Math.max(1, Math.min(60, Number(payload?.overrideMinutes) || 5));
   await chrome.storage.local.set({
-    backendUrl,
-    jwtToken,
     blockedSites,
     strictMode: Boolean(payload?.strictMode),
     overrideMinutes
@@ -216,27 +213,10 @@ async function schedulePendingSyncAlarm(activityBuffer) {
   await chrome.alarms.create(PENDING_SYNC_ALARM, { when: Math.max(Date.now() + 30_000, nextAt) });
 }
 
-function normalizeBackendUrl(value) {
-  const trimmed = String(value || "").trim().replace(/\/+$/, "");
-
-  if (!trimmed) {
-    return DEFAULT_SETTINGS.backendUrl;
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    const localHttp = parsed.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname);
-    if ((parsed.protocol !== "https:" && !localHttp) || parsed.username || parsed.password) return DEFAULT_SETTINGS.backendUrl;
-    const path = parsed.pathname.replace(/\/+$/, "");
-    if (path && path !== "/api/v1") return DEFAULT_SETTINGS.backendUrl;
-    return `${parsed.origin}/api/v1`;
-  } catch { return DEFAULT_SETTINGS.backendUrl; }
-}
-
 function isTrustedArrakisClientUrl(value) {
   try {
     const url = new URL(value);
-    return ["https://arrakis-intelligence-platform.vercel.app", "http://localhost:5173"].includes(url.origin);
+    return url.origin === PRODUCTION_CLIENT_ORIGIN;
   } catch { return false; }
 }
 
@@ -304,7 +284,7 @@ async function syncExtensionPolicy() {
   const settings = await getSettings();
   const subject = getJwtSubject(settings.jwtToken);
   if (!subject) return "auth-required";
-  const response = await fetchWithTimeout(`${normalizeBackendUrl(settings.backendUrl)}/profile/extension-policy`, {
+  const response = await fetchWithTimeout(`${PRODUCTION_BACKEND_URL}/profile/extension-policy`, {
     headers: { Authorization: `Bearer ${settings.jwtToken}` }
   });
   if (response.status === 401) return "auth-required";
@@ -326,7 +306,7 @@ async function pushExtensionPolicy(changes) {
     if (pulled !== "synced") return "local-only";
   }
   const current = await getSettings();
-  const response = await fetchWithTimeout(`${normalizeBackendUrl(current.backendUrl)}/profile/extension-policy`, {
+  const response = await fetchWithTimeout(`${PRODUCTION_BACKEND_URL}/profile/extension-policy`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${current.jwtToken}` },
     body: JSON.stringify({ ...changes, baseVersion: Number(current.policyVersion) || 0 })
@@ -606,8 +586,7 @@ async function postStormLog(settings, host, pendingSync) {
     return "auth-required";
   }
 
-  const backendUrl = normalizeBackendUrl(settings.backendUrl);
-  const endpoint = `${backendUrl}/storm/log`;
+  const endpoint = `${PRODUCTION_BACKEND_URL}/storm/log`;
 
   try {
     const response = await fetch(endpoint, {

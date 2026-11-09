@@ -1,8 +1,6 @@
 import { normalizePattern } from "./domainRules.js";
 
 const DEFAULTS = {
-  backendUrl: "http://localhost:5000/api/v1",
-  jwtToken: "",
   blockedSites: [],
   lastDeliveryStatus: {
     state: "idle",
@@ -11,8 +9,6 @@ const DEFAULTS = {
   }
 };
 
-const backendUrlInput = document.getElementById("backend-url");
-const jwtTokenInput = document.getElementById("jwt-token");
 const blockedSitesInput = document.getElementById("blocked-sites");
 const strictModeInput = document.getElementById("strict-mode");
 const overrideMinutesInput = document.getElementById("override-minutes");
@@ -42,12 +38,6 @@ saveButton.addEventListener("click", async () => {
   }
 
   const uniqueBlockedSites = [...new Set(normalizedSites)];
-  const backendUrl = normalizeBackendUrl(backendUrlInput.value);
-  if (!backendUrl) {
-    renderStatus({ state: "error", message: "Use an HTTPS backend URL (HTTP is allowed only for localhost).", updatedAt: new Date().toISOString() });
-    return;
-  }
-  const jwtToken = jwtTokenInput.value.trim();
   const strictMode = strictModeInput.checked;
   const overrideMinutes = Math.max(1, Number(overrideMinutesInput.value) || 5);
 
@@ -56,8 +46,6 @@ saveButton.addEventListener("click", async () => {
     const response = await chrome.runtime.sendMessage({
       type: "SAVE_SETTINGS",
       payload: {
-        backendUrl,
-        jwtToken,
         blockedSites: uniqueBlockedSites,
         strictMode,
         overrideMinutes
@@ -69,7 +57,6 @@ saveButton.addEventListener("click", async () => {
     }
 
     blockedSitesInput.value = (response.settings?.blockedSites || []).join("\n");
-    backendUrlInput.value = response.settings?.backendUrl || backendUrl;
     const syncMessages = {
       synced: "Settings saved and synced to your Arrakis account.",
       conflict: "Your Arrakis account had newer settings, so those were kept and loaded here.",
@@ -116,8 +103,6 @@ async function initializePopup() {
     ...stored
   };
 
-  backendUrlInput.value = settings.backendUrl;
-  jwtTokenInput.value = settings.jwtToken;
   blockedSitesInput.value = (settings.blockedSites || []).join("\n");
   strictModeInput.checked = Boolean(settings.strictMode);
   overrideMinutesInput.value = settings.overrideMinutes || 5;
@@ -137,22 +122,6 @@ function getActiveTab() {
       currentWindow: true
     })
     .then((tabs) => tabs[0] || null);
-}
-
-function normalizeBackendUrl(value) {
-  const trimmed = String(value || "").trim().replace(/\/+$/, "");
-
-  if (!trimmed) {
-    return DEFAULTS.backendUrl;
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    const localHttp = parsed.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname);
-    const path = parsed.pathname.replace(/\/+$/, "");
-    if ((parsed.protocol !== "https:" && !localHttp) || parsed.username || parsed.password || (path && path !== "/api/v1")) return "";
-    return `${parsed.origin}/api/v1`;
-  } catch { return ""; }
 }
 
 function renderStatus(status) {

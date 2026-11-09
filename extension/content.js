@@ -10,7 +10,7 @@
   }
 
   function isTrustedArrakisOrigin() {
-    return ["https://arrakis-intelligence-platform.vercel.app", "http://localhost:5173"].includes(window.location.origin);
+    return window.location.origin === "https://arrakis-intelligence-platform.vercel.app";
   }
 
   function pageIsTrackable() {

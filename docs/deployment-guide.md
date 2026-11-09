@@ -23,7 +23,7 @@ Deploy `server/` to Render with:
   - `NODE_ENV=production`
   - `CLIENT_URL=https://arrakis-intelligence-platform.vercel.app`
   - `APP_URL=https://arrakis-intelligence-platform.vercel.app`
-  - `ALLOWED_ORIGINS=https://arrakis-intelligence-platform.vercel.app,chrome-extension://<installed Edge extension ID>` (the extension origin is required for account policy sync and Storm log delivery; the ID is shown on `edge://extensions`)
+  - `ALLOWED_ORIGINS=https://arrakis-intelligence-platform.vercel.app,chrome-extension://ejflgebapfppgfkomjendlfjpcdhbjki` (the published Edge extension origin is required for account policy sync and Storm log delivery)
   - `MONGODB_URI=<atlas-replica-set-uri>`
   - `JWT_ACCESS_SECRET=<strong-secret>`
   - `JWT_REFRESH_SECRET=<strong-secret>`
