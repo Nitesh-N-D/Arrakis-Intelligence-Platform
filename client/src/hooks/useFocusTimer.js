@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const SESSION_TYPES = { 25: "pomodoro-25", 50: "deep-50" };
+// Matches the server limits in focusLimits.js; the server derives the session type itself.
+export const FOCUS_MINUTES = Object.freeze({ min: 1, max: 240 });
+const isValidMinutes = (minutes) => Number.isInteger(minutes) && minutes >= FOCUS_MINUTES.min && minutes <= FOCUS_MINUTES.max;
 
 export function useFocusTimer({ onStart, onComplete, onPause, onResume, onReset, onRecover }) {
   const [mode, setMode] = useState("idle");
@@ -66,12 +68,12 @@ export function useFocusTimer({ onStart, onComplete, onPause, onResume, onReset,
     return () => clearInterval(interval);
   }, [mode, durationMinutes, sessionId, complete]);
 
-  const start = async (minutes) => {
-    if (harvesting || !SESSION_TYPES[minutes]) return;
+  const start = async (minutes, options = {}) => {
+    if (harvesting || !isValidMinutes(minutes)) return;
     setHarvesting(true);
     setError("");
     try {
-      const session = await onStart({ duration: minutes, type: SESSION_TYPES[minutes] });
+      const session = await onStart({ duration: minutes, ...(options.missionId ? { missionId: options.missionId } : {}) });
       const id = session?._id || session?.id;
       if (!id || !session.startedAt) throw new Error("The server did not confirm the focus session start.");
       completionRef.current = false;

@@ -1,6 +1,8 @@
-import { useState } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import CareerPreferences from "../components/career/CareerPreferences";
+import CareerRoleSelector from "../components/career/CareerRoleSelector";
+import { emptySelection, selectionTitle, toCareerPayload, validateSelection } from "../components/career/careerSelectorModel";
 import AuthShell from "../components/ui/AuthShell";
 import Button from "../components/ui/Button";
 import GoogleButton from "../components/ui/GoogleButton";
@@ -14,9 +16,11 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    password: "",
-    targetRole: "AI Systems Engineer"
+    password: ""
   });
+  const [career, setCareer] = useState(emptySelection);
+  const [careerErrors, setCareerErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -27,14 +31,21 @@ export default function RegisterPage() {
   const submit = async (event) => {
     event.preventDefault();
     setError("");
+    const errors = validateSelection(career);
+    setCareerErrors(errors);
+    if (Object.keys(errors).length > 0) return;
 
+    setSubmitting(true);
     try {
-      const response = await authService.register(form);
+      // `targetRole` is kept for older API versions; the server derives it from `career`.
+      const response = await authService.register({ ...form, targetRole: selectionTitle(career), career: toCareerPayload(career) });
       setUser(response.data.user);
       setAccessToken(response.data.accessToken);
       navigate(location.state?.from?.pathname || "/", { replace: true });
     } catch (registerError) {
       setError(registerError.message || "Unable to register");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -108,25 +119,27 @@ export default function RegisterPage() {
             onChange={(event) => setForm({ ...form, password: event.target.value })}
           />
         </div>
-        <div>
-          <label htmlFor="register-target-role" className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Target role</label>
-          <select
-            id="register-target-role"
-            className="focus-ring w-full rounded-button border border-border-subtle bg-black/20 px-4 py-3"
-            value={form.targetRole}
-            onChange={(event) => setForm({ ...form, targetRole: event.target.value })}
-          >
-            <option>AI Systems Engineer</option>
-            <option>Product Engineering Lead</option>
-          </select>
-        </div>
+        <CareerRoleSelector
+          errors={careerErrors}
+          idPrefix="register-career"
+          value={career}
+          onChange={(next) => { setCareer(next); setCareerErrors({}); }}
+        />
+        {career.roleId ? (
+          <details className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+            <summary className="cursor-pointer text-sm font-semibold text-white">Tune your plan (optional)</summary>
+            <div className="mt-4">
+              <CareerPreferences idPrefix="register-pref" selection={career} onChange={setCareer} />
+            </div>
+          </details>
+        ) : null}
         {error ? (
           <div className="rounded-card border border-red-300/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
             {error}
           </div>
         ) : null}
-        <Button className="w-full" type="submit">
-          Register
+        <Button className="w-full" disabled={submitting} type="submit">
+          {submitting ? "Creating account..." : "Register"}
         </Button>
       </form>
 

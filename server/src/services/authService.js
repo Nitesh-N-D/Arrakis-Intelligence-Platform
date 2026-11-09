@@ -2,7 +2,7 @@ import { UserRepository } from "../repositories/UserRepository.js";
 import { ApiError } from "../utils/ApiError.js";
 import { comparePassword, hashPassword } from "../utils/password.js";
 import { TokenService } from "./tokenService.js";
-import { roleSkillMatrix } from "../dune/skillMatrix.js";
+import { careerFromTargetRole, normalizeCareerInput } from "./careerProfile.js";
 
 const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
 
@@ -53,10 +53,11 @@ export class AuthService {
     }
 
     validatePassword(password);
-    const targetRole = String(payload.targetRole || "AI Systems Engineer").trim();
-    if (!Object.hasOwn(roleSkillMatrix, targetRole)) {
-      throw new ApiError(400, "Choose a supported target role.");
-    }
+    // New clients send a structured `career`; older clients send the `targetRole` string.
+    const career = payload.career
+      ? normalizeCareerInput(payload.career)
+      : careerFromTargetRole(String(payload.targetRole || "AI Systems Engineer"));
+    const targetRole = career.title;
 
     const existingUser = await this.userRepository.findByEmail(email);
     if (existingUser) {
@@ -78,6 +79,7 @@ export class AuthService {
         provider: "local",
         passwordHash,
         targetRole,
+        career: { ...career, selectionPending: false, selectedAt: new Date() },
         skills: normalizeSkills(payload.skills)
       });
     } catch (error) {

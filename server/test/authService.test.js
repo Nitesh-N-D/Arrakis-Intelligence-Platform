@@ -32,10 +32,12 @@ test("registration normalizes email and hashes the password", async () => {
   assert.equal(result.accessToken, "mock-access");
 });
 
-test("registration rejects malformed email, unsupported roles, and bcrypt-truncated passwords", async () => {
+test("registration rejects malformed email, invalid roles, and bcrypt-truncated passwords", async () => {
   const malformed = createService().service;
   await assert.rejects(malformed.register({ name: "Valid Name", email: "bad@", password: "12345678" }), { statusCode: 400 });
-  await assert.rejects(malformed.register({ name: "Valid Name", email: "valid@example.com", password: "12345678", targetRole: "Unlisted role" }), { statusCode: 400 });
+  await assert.rejects(malformed.register({ name: "Valid Name", email: "valid@example.com", password: "12345678", targetRole: "<script>x</script>" }), { statusCode: 400 });
+  await assert.rejects(malformed.register({ name: "Valid Name", email: "valid@example.com", password: "12345678", targetRole: "R".repeat(81) }), { statusCode: 400 });
+  await assert.rejects(malformed.register({ name: "Valid Name", email: "valid@example.com", password: "12345678", career: { roleId: "not-a-role" } }), { statusCode: 400 });
   await assert.rejects(malformed.register({ name: "Valid Name", email: "valid@example.com", password: "x".repeat(73) }), { statusCode: 400 });
 });
 
@@ -52,4 +54,34 @@ test("registration maps a concurrent unique-email insert collision to the existi
     service.register({ name: "Valid Name", email: "race@example.com", password: "valid password", targetRole: "AI Systems Engineer" }),
     { statusCode: 409, message: "A user with this email already exists" }
   );
+});
+
+test("registration stores a server-resolved catalogue career and ignores client-supplied role details", async () => {
+  const { service, state } = createService();
+  await service.register({
+    name: "Operative",
+    email: "career@example.com",
+    password: "a strong password",
+    targetRole: "Something Else",
+    career: { roleId: "frontend-developer", title: "Spoofed", isCustom: false, experienceLevel: "beginner", timelineMonths: 6 }
+  });
+  assert.equal(state.created.targetRole, "Frontend Developer");
+  assert.equal(state.created.career.roleId, "frontend-developer");
+  assert.equal(state.created.career.title, "Frontend Developer");
+  assert.equal(state.created.career.experienceLevel, "beginner");
+  assert.equal(state.created.career.timelineMonths, 6);
+  assert.equal(state.created.career.selectionPending, false);
+});
+
+test("registration accepts a validated custom career", async () => {
+  const { service, state } = createService();
+  await service.register({
+    name: "Operative",
+    email: "custom@example.com",
+    password: "a strong password",
+    career: { roleId: "custom", customTitle: "  Robotics   Software Engineer ", customSkills: ["python", "ros", "Python"] }
+  });
+  assert.equal(state.created.targetRole, "Robotics Software Engineer");
+  assert.equal(state.created.career.isCustom, true);
+  assert.deepEqual(state.created.career.customSkills.map((skill) => skill.name), ["Python", "ros"]);
 });

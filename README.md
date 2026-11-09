@@ -9,7 +9,7 @@ Arrakis Intelligence Platform is a React and Express application for server-trac
 
 ## Browser Extension
 
-Arrakis includes a Manifest V3 browser extension that provides realtime distraction tracking, Storm Zone blocking, strict mode enforcement, timed overrides, and synchronization with the Arrakis backend.
+Arrakis includes a Manifest V3 extension for Microsoft Edge that provides realtime distraction tracking, Storm Zone blocking, strict mode enforcement, timed overrides, and synchronization with the Arrakis backend.
 
 ### Features
 
@@ -27,19 +27,22 @@ The repository's `arrakis-extension.zip` is built from the current `extension/` 
 
 ### Browser Compatibility
 
-The extension uses Manifest V3 APIs intended for Chrome and Chromium-based Microsoft Edge. Playwright automation has verified blocking behavior in bundled Chromium and Microsoft Edge, including popup settings persistence, strict blocking, hidden destination URLs, and Edge extension-worker restart recovery. Chromium coverage also checks timed overrides, context expiry, and pending-sync alarms. Manual installation and store compatibility have not been verified. Browser-store approval, Brave, and Opera are not claimed.
+**Microsoft Edge is the only officially supported browser.** The extension is not yet published on Microsoft Edge Add-ons; install it unpacked. Real-Edge smoke tests (`scripts/edge-extension-smoke.mjs`, `scripts/edge-policy-smoke.mjs`) pass on Edge 157 for the handshake, blocking and account policy sync against a local mock API. Chromium-only results are not treated as proof of Edge compatibility, and other browsers are not claimed.
 
 ### Manual Installation
 
-1. Extract the repository or download `arrakis-extension.zip` from the current source revision.
-2. Extract the ZIP archive.
-3. Open:
+See [docs/EDGE_INSTALLATION.md](docs/EDGE_INSTALLATION.md). In short: extract `arrakis-extension.zip`, open `edge://extensions`, enable **Developer mode**, click **Load unpacked**, and select the extracted folder. For account sync, the server's `ALLOWED_ORIGINS` must include the extension origin.
 
-   * Edge → `edge://extensions`
-   * Chrome → `chrome://extensions`
-4. Enable **Developer Mode**.
-5. Click **Load unpacked**.
-6. Select the extracted extension folder.
+## Career Intelligence and Planning
+
+* 81-role catalogue in 11 categories, a searchable selector, and custom typed roles. Users can choose or change their role at registration, during onboarding, or at any time later from the dashboard.
+* Safe role changes: preview first, then confirm, with roadmap progress preserved.
+* Evidence-gated roadmap mastery.
+* Daily Mission Control (up to 3 priorities, planned focus, explicit carry-forward), goals with milestones, and focus presets linked to missions.
+* Explainable insights and a weekly review, with evidence and confidence shown for each insight.
+* Privacy controls: retention period, tracking pause, and team-sharing choice.
+
+Docs: [Career Intelligence](docs/CAREER_INTELLIGENCE.md) · [API](docs/API.md) · [Architecture](docs/ARCHITECTURE.md) · [Security review](docs/SECURITY_REVIEW.md) · [Testing report](docs/TESTING_REPORT.md) · [Roadmap](docs/PRODUCT_ROADMAP.md) · [Extension guide](docs/extension-setup-guide.md)
 
 ## Monorepo Structure
 
@@ -240,7 +243,7 @@ The CI workflow also checks that `arrakis-extension.zip` contains the same files
 
 * Manifest V3
 * JavaScript
-* Chrome Extension APIs
+* Manifest V3 extension APIs (the `chrome.*` namespace implemented by Microsoft Edge)
 * Edge Extension APIs
 
 ## Privacy
@@ -255,7 +258,7 @@ Users can export their profile, focus-session history, distraction records, and 
 * Focus completion uses a MongoDB transaction. Local MongoDB and production MongoDB URIs must connect to a replica set; `docker-compose.yml` initializes a single-node set for development.
 * Extension source changes are included in the tracked `arrakis-extension.zip`; publishing the updated package still requires the existing release process.
 * Extension retries use stored event IDs, a persisted alarm, exponential backoff, an eight-attempt limit, and a 24-hour expiry. Unpacked Chromium and Edge automation passed; manual installation, publishing, and store compatibility still need owner verification.
-* Extension account-token handoff and logout/account-switch behavior have not been exercised end to end in real Chrome and Edge profiles.
+* Extension account-token handoff and logout/account-switch behavior have not been exercised end to end in a normal Edge profile against the deployed API.
 * The client uses Tailwind CSS 4, which targets Safari 16.4+, Chrome 111+, and Firefox 128+. The production and full dependency audits are clean.
 
 ## License

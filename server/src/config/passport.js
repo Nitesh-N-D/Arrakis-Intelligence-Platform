@@ -27,7 +27,10 @@ export const createGoogleVerifyCallback = (repository = new UserRepository()) =>
         name: profile.displayName || email.split("@")[0],
         email,
         provider: "google",
-        googleId: profile.id
+        googleId: profile.id,
+        // New Google accounts have not chosen a career yet; the web app routes
+        // them through career onboarding. Existing accounts are never flagged.
+        career: { selectionPending: true }
       });
     } else if (user.googleId !== profile.id || user.provider !== "google") {
       user = await repository.updateById(user.id, {

@@ -75,6 +75,21 @@ test("profile and roadmap changes persist to only the integration fixture accoun
   const activePhase = roadmap.phases.find((phase) => phase.status === "active");
   assert.ok(activePhase);
 
+  const fixtureUser = { id: user.id, skills: profile.skills, targetRole: profile.targetRole };
+  const phaseId = String(activePhase._id);
+  // Mastery needs real completion evidence: every task, one evidence entry and every assessment criterion.
+  await assert.rejects(roadmapService.completePhase(fixtureUser, phaseId), { statusCode: 409 });
+  for (const index of activePhase.tasks.keys()) {
+    await roadmapService.updatePhase(fixtureUser, phaseId, { task: { index, done: true } });
+  }
+  await roadmapService.addEvidence(fixtureUser, phaseId, {
+    summary: "Integration fixture evidence describing a completed practical exercise.",
+    url: "https://example.test/evidence"
+  });
+  for (const index of activePhase.assessmentCriteria.keys()) {
+    await roadmapService.updatePhase(fixtureUser, phaseId, { assessment: { index, confirmed: true } });
+  }
+
   const updatedRoadmap = await roadmapService.completePhase(
     { id: user.id, skills: profile.skills, targetRole: profile.targetRole },
     String(activePhase._id)
@@ -87,7 +102,7 @@ test("profile and roadmap changes persist to only the integration fixture accoun
   ]);
   assert.equal(updatedRoadmap.phases[0].status, "done");
   assert.equal(storedRoadmap.phases.find((phase) => String(phase._id) === String(activePhase._id)).status, "done");
-  assert.ok(storedUser.skills.some((skill) => skill.name === activePhase.skill && skill.level >= 4));
+  assert.ok(storedUser.skills.some((skill) => skill.name === activePhase.skill && skill.level >= activePhase.expectedLevel));
   assert.equal(storedUser.preferences.strictBlockMode, true);
   assert.equal(storedUser.preferences.stormWarningMinutes, 75);
   assert.deepEqual(storedUser.preferences.blockedSites, ["youtube.com"]);

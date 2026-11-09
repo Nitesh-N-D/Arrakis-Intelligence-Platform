@@ -74,3 +74,76 @@ export function getSafeExtensionErrorMessage(error) {
   if (error?.name === "TypeError") return "The request failed. Check your connection and API URL.";
   return "The extension action failed. Check your settings and try again.";
 }
+
+export const HANDSHAKE_PROTOCOL = 1;
+export const BLOCKING_POLICIES = ["always", "focus-only", "off"];
+
+/** Whether blocked sites should be redirected right now, given the account's blocking policy. */
+export function isBlockingActive(settings = {}) {
+  const policy = BLOCKING_POLICIES.includes(settings.blockingPolicy) ? settings.blockingPolicy : "always";
+  if (policy === "off") return false;
+  if (policy === "focus-only") return Boolean(settings.focusActive);
+  return true;
+}
+
+/**
+ * Validates a policy returned by GET /profile/extension-policy. Returns the local settings to store,
+ * or null when the response is malformed or belongs to a different account than the signed-in token.
+ */
+export function normalizeExtensionPolicy(policy, expectedSubject, now = Date.now()) {
+  if (!policy || typeof policy !== "object" || !expectedSubject) return null;
+  if (String(policy.accountId || "") !== String(expectedSubject)) return null;
+  const version = Number(policy.version);
+  if (!Number.isInteger(version) || version < 0) return null;
+  const blockedSites = Array.isArray(policy.blockedSites)
+    ? [...new Set(policy.blockedSites.map(normalizePattern).filter(Boolean))].slice(0, 500)
+    : [];
+  return {
+    blockedSites,
+    strictMode: Boolean(policy.strictMode),
+    overrideMinutes: Math.max(1, Math.min(60, Number(policy.overrideMinutes) || 5)),
+    blockingPolicy: BLOCKING_POLICIES.includes(policy.blockingPolicy) ? policy.blockingPolicy : "always",
+    trackingPaused: Boolean(policy.trackingPaused),
+    focusActive: Boolean(policy.focusActive),
+    policyVersion: version,
+    policyAccount: String(expectedSubject),
+    policySyncedAt: new Date(now).toISOString()
+  };
+}
+
+/** Best-effort browser label. Only Microsoft Edge is a supported target; anything else is reported as unsupported. */
+export function detectBrowser(userAgentData, userAgent = "") {
+  const brands = Array.isArray(userAgentData?.brands) ? userAgentData.brands.map((entry) => String(entry?.brand || "")) : [];
+  if (brands.some((brand) => brand === "Microsoft Edge") || /\bEdg\//.test(String(userAgent))) return "edge";
+  return "other-chromium";
+}
+
+/**
+ * Status returned to the trusted Arrakis web app during the handshake.
+ * Never includes the access token, account subject, queued hostnames or browsing history.
+ */
+export function buildHandshakeStatus({ manifest = {}, settings = {}, browser = "other-chromium", expectedSubject = "", now = Date.now() } = {}) {
+  const subject = getJwtSubject(settings.jwtToken, now);
+  const pending = Object.values(settings.activityBuffer || {}).filter((entry) => entry?.pendingSync).length;
+  const delivery = settings.lastDeliveryStatus || {};
+  return {
+    protocol: HANDSHAKE_PROTOCOL,
+    version: String(manifest.version || "0.0.0"),
+    browser,
+    connected: Boolean(subject),
+    accountMatches: Boolean(subject && expectedSubject && subject === String(expectedSubject)),
+    permissions: [...(manifest.permissions || [])],
+    hostAccess: (manifest.host_permissions || []).length > 0 ? "all-http-https-sites" : "none",
+    blockedSiteCount: Array.isArray(settings.blockedSites) ? settings.blockedSites.length : 0,
+    strictMode: Boolean(settings.strictMode),
+    blockingPolicy: BLOCKING_POLICIES.includes(settings.blockingPolicy) ? settings.blockingPolicy : "always",
+    trackingPaused: Boolean(settings.trackingPaused),
+    policyVersion: Number.isInteger(settings.policyVersion) ? settings.policyVersion : 0,
+    policySyncedAt: typeof settings.policySyncedAt === "string" ? settings.policySyncedAt : null,
+    pendingEvents: pending,
+    lastSync: {
+      state: ["idle", "success", "warning", "error"].includes(delivery.state) ? delivery.state : "idle",
+      updatedAt: typeof delivery.updatedAt === "string" ? delivery.updatedAt : null
+    }
+  };
+}

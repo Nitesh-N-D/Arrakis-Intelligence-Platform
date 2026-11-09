@@ -36,16 +36,17 @@ export class PrescienceService {
 
     const riskBand = burnoutRisk >= 70 ? "HIGH RISK" : burnoutRisk >= 40 ? "ELEVATED" : "STABLE";
 
+    // Supportive, proportionate wording. These are workload-pattern estimates, never a diagnosis.
     const recommendations = [
       averageDistractionMinutes >= 120
-        ? "Storm pressure is overwhelming your operating rhythm. Cut one high-friction app block tomorrow morning."
-        : "Distraction pressure is within control. Keep your current protected work blocks intact.",
+        ? "Tracked distraction time has been high this week. If that wasn't planned downtime, try blocking one site during focus sessions only."
+        : "Tracked distraction time is moderate. Your current Storm Zone setup seems to be working.",
       averageFocusMinutes < 75
-        ? "Your spice harvest is thin. Commit to two completed sessions before midday."
-        : "Focus volume is holding. Increase quality with one uninterrupted deep-50 session.",
+        ? "Focus time has been light. One short session early in the day is a realistic place to start — no need to catch up all at once."
+        : "Focus volume is healthy. If it feels sustainable, one longer uninterrupted session could deepen the work.",
       streak <= 1
-        ? "Your streak is fragile. Secure a small win early tomorrow to re-establish behavioral momentum."
-        : "Your streak is compounding well. Preserve it with consistent session starts."
+        ? "Rhythm is just starting (or restarting). Any completed session today counts; rest days are normal."
+        : "You've been showing up consistently. Keep the routine that's making that easy."
     ];
 
     return {
@@ -56,7 +57,11 @@ export class PrescienceService {
         distractionMinutes: Math.round(averageDistractionMinutes),
         streak
       },
-      recommendations
+      recommendations,
+      // Alias with clearer wording; `burnoutRisk` is kept for API compatibility.
+      workloadStrain: burnoutRisk,
+      basis: ["7-day average focus minutes", "7-day average tracked distraction minutes", "current streak"],
+      disclaimer: "An estimate of workload pressure from your own focus and distraction records. It is not a medical or psychological assessment."
     };
   }
 }

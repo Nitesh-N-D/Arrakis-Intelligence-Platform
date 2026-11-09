@@ -30,6 +30,12 @@ export class StormService {
 
   async logDistraction(user, payload) {
     const now = new Date();
+    const source = String(payload.metadata?.source || payload.source || "manual");
+    // Tracking consent: while the user has paused tracking, automatic (extension) events are acknowledged
+    // but never stored. Manual logs the user types themselves are still accepted.
+    if (user.preferences?.trackingPaused && source !== "manual") {
+      return { skipped: true, reason: "tracking-paused" };
+    }
     const loggedAt = payload.loggedAt ? new Date(payload.loggedAt) : new Date();
     if (Number.isNaN(loggedAt.getTime())) {
       throw new ApiError(400, "Logged timestamp is invalid");

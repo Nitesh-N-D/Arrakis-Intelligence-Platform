@@ -1,3 +1,4 @@
+import { serializeCareer } from "../services/careerProfile.js";
 import { UserRepository } from "../repositories/UserRepository.js";
 import { AuthService } from "../services/authService.js";
 import { OperativeStateService } from "../services/operativeStateService.js";
@@ -32,6 +33,7 @@ const serializeUser = (user) => ({
   totalSpice: user.totalSpice,
   currentRank: user.currentRank,
   targetRole: user.targetRole,
+  career: serializeCareer(user),
   focusStreak: user.focusStreak,
   stormModeActive: user.stormModeActive,
   skills: user.skills,

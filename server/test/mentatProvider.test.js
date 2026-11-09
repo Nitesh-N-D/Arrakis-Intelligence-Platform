@@ -90,7 +90,9 @@ const createService = (generator) => new MentatService({
   generator,
   budgetCheck() {},
   analyticsService: { getDashboard: async () => fixtureContext.dashboard },
-  prescienceService: { analyze: async () => fixtureContext.prescience }
+  prescienceService: { analyze: async () => fixtureContext.prescience },
+  behaviorService: { behavior: async () => null },
+  missionRepository: { listByDay: async () => [] }
 });
 
 test("Gemini quota exhaustion falls back after one Retry-After-aware retry", async () => {

@@ -31,6 +31,7 @@ const userRecord = (id, overrides = {}) => ({
 test("profile mutations target only the requested account and normalize bounded fields", async () => {
   const calls = [];
   const repository = {
+    async findById(id) { return userRecord(id); },
     async updateById(id, update) {
       calls.push({ id, update });
       return userRecord(id, update);
@@ -60,10 +61,18 @@ test("profile mutations target only the requested account and normalize bounded 
   assert.equal(result.id, "user-a");
 });
 
-test("profile validation rejects unsupported target roles and non-http avatar URLs", async () => {
-  const service = new ProfileService({ userRepository: { updateById: async () => assert.fail("must not persist invalid profile") } });
+test("profile validation rejects malformed target roles and non-http avatar URLs", async () => {
+  const service = new ProfileService({
+    userRepository: {
+      findById: async (id) => userRecord(id),
+      updateById: async () => assert.fail("must not persist invalid profile")
+    }
+  });
+  for (const targetRole of ["", "x", "<img src=x>", "R".repeat(81), "1234", "a‮b role"]) {
+    await assert.rejects(service.updateProfile("user-a", { name: "User", targetRole }), { statusCode: 400 }, targetRole);
+  }
   await assert.rejects(
-    service.updateProfile("user-a", { name: "User", targetRole: "Unknown Role" }),
+    service.updateProfile("user-a", { name: "User", career: { roleId: "made-up-id" } }),
     { statusCode: 400 }
   );
   await assert.rejects(
@@ -83,7 +92,7 @@ test("settings preserve unrelated preferences, clamp values, and scope writes by
   };
   const service = new ProfileService({ userRepository: repository });
   await service.updateSettings("user-b", {
-    focusDurationPreference: 99,
+    focusDurationPreference: 500,
     stormWarningMinutes: 500,
     blockedSites: "YouTube.com\nreddit.com\nyoutube.com",
     strictBlockMode: true,
@@ -92,8 +101,12 @@ test("settings preserve unrelated preferences, clamp values, and scope writes by
   });
 
   assert.equal(calls[0].id, "user-b");
-  assert.deepEqual(calls[0].update.preferences, {
+  const { policyUpdatedAt, ...preferences } = calls[0].update.preferences;
+  assert.ok(policyUpdatedAt instanceof Date, "changing blocking fields stamps the policy update time");
+  assert.deepEqual(preferences, {
     focusDurationPreference: 50,
+    focusPresets: [25, 50],
+    policyVersion: 1,
     stormWarningMinutes: 240,
     blockedSites: ["youtube.com", "reddit.com"],
     strictBlockMode: true,
@@ -128,9 +141,14 @@ test("malformed numeric settings fall back to stored preferences instead of pers
 });
 
 test("roadmap completes only its active phase, advances once, and persists skill progress", async () => {
+  const criteria = ["a", "b", "c"];
   const phases = [
-    { id: "phase-1", skill: "Node.js", status: "active", startedAt: new Date(), completedAt: null },
-    { id: "phase-2", skill: "React", status: "locked", startedAt: null, completedAt: null }
+    {
+      id: "phase-1", skill: "Node.js", status: "active", startedAt: new Date(), completedAt: null,
+      tasks: ["t1", "t2"], completedTasks: [0, 1], assessmentCriteria: criteria, assessmentConfirmed: [0, 1, 2],
+      evidence: [{ summary: "Built and deployed an API with auth, tests, and a written retrospective." }]
+    },
+    { id: "phase-2", skill: "React", status: "locked", startedAt: null, completedAt: null, tasks: ["t1"], assessmentCriteria: criteria }
   ];
   const roadmap = { phases, currentPhaseIndex: 0, targetRole: "AI Systems Engineer" };
   const saved = [];
@@ -153,4 +171,32 @@ test("roadmap completes only its active phase, advances once, and persists skill
   assert.equal(result.phases[1].status, "active");
   assert.equal(saved.length, 1);
   assert.deepEqual(replaced, [["user-c", "Node.js", 4]]);
+});
+
+test("same-role profile saves re-plan only when career preferences actually change", async () => {
+  const stored = userRecord("user-p", {
+    targetRole: "Frontend Developer",
+    career: { roleId: "frontend-developer", title: "Frontend Developer", isCustom: false, targetLevel: "intermediate", experienceLevel: "beginner", timelineMonths: 6 }
+  });
+  const repository = {
+    async findById() { return stored; },
+    async updateById(id, update) { return { ...stored, ...update }; }
+  };
+  const updates = [];
+  const careerService = {
+    isSameRole: () => true,
+    async assertChangeAllowed() { throw new Error("should not be called for the same role"); },
+    async update(user, payload) { updates.push(payload); }
+  };
+  const service = new ProfileService({ userRepository: repository, careerService });
+  const base = { name: "Arrakis User", bio: "" };
+  const preferences = { roleId: "frontend-developer", targetLevel: "intermediate", experienceLevel: "beginner", timelineMonths: 6 };
+
+  await service.updateProfile("user-p", { ...base, career: preferences });
+  await service.updateProfile("user-p", { ...base, targetRole: "Frontend Developer" });
+  assert.equal(updates.length, 0, "unchanged career must not re-plan the roadmap");
+
+  await service.updateProfile("user-p", { ...base, career: { ...preferences, targetLevel: "advanced" } });
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].career.targetLevel, "advanced");
 });

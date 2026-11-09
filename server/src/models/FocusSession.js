@@ -12,7 +12,11 @@ const focusSessionSchema = new mongoose.Schema(
     productivityScore: { type: Number, required: true, min: 0, max: 100, default: 100 },
     startedAt: { type: Date, required: true },
     completedAt: { type: Date, default: null },
-    notes: { type: String, default: "" }
+    notes: { type: String, default: "" },
+    // Optional Daily Mission this session is allocated to; credited only after server-verified completion.
+    mission: { type: mongoose.Schema.Types.ObjectId, ref: "Mission", default: null },
+    // Number of times the session was paused; used for interruption-recovery insights.
+    pauseCount: { type: Number, default: 0, min: 0 }
   },
   { timestamps: true }
 );
