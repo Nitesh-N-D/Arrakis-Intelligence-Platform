@@ -12,7 +12,7 @@ are in [EDGE_INSTALLATION.md](EDGE_INSTALLATION.md).
 * Redirects blocked hostnames (exact host or subdomain) to the Storm Zone page. In non-strict mode
   the user can take a timed override.
 
-## Account policy sync (v1.2.0)
+## Account policy sync (included in extension v1.1.0)
 
 The account is the source of truth for the blocking policy:
 
@@ -29,7 +29,7 @@ The account is the source of truth for the blocking policy:
 * **Push:** saving in the popup sends `PUT /profile/extension-policy` with `baseVersion`. If the
   account changed elsewhere the server answers `409`, the extension downloads the server copy, and
   the popup says the newer settings were kept.
-* Without a sign-in, popup settings stay local to the browser.
+* The API endpoint is fixed to the production Arrakis HTTPS service. Without a sign-in, popup settings stay local to the browser.
 * With `focus-only`, blocking can start or stop up to two minutes after a timer starts or ends.
 
 ## Validate

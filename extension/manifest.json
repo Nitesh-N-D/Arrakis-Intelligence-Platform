@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Arrakis Intelligence Platform",
   "description": "Arrakis for Microsoft Edge: tracks focused-tab hostnames and durations, blocks Storm Zone sites, and syncs with your Arrakis account.",
-  "version": "1.2.0",
+  "version": "1.1.0",
   "permissions": [
     "storage",
     "tabs",

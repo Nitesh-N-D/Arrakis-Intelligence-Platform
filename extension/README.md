@@ -1,6 +1,6 @@
 # Arrakis Browser Extension
 
-The Arrakis extension is a Manifest V3 companion for realtime distraction telemetry and Storm Zone enforcement. **Microsoft Edge is the only supported browser.** The code uses the standard `chrome.*` extension namespace, which Edge implements; that is an API name, not a statement of Chrome support. It is not published on Microsoft Edge Add-ons yet.
+The Arrakis extension is a Manifest V3 companion for realtime distraction telemetry and Storm Zone enforcement. **Microsoft Edge is the only supported browser.** The code uses the standard `chrome.*` extension namespace, which Edge implements; that is an API name, not a statement of Chrome support. Partner Center manages the published listing and release submission.
 
 ## Features
 
@@ -9,8 +9,8 @@ The Arrakis extension is a Manifest V3 companion for realtime distraction teleme
 - blocked-site redirect into a premium Storm Zone page
 - strict mode hard blocking
 - timed override when strict mode is disabled
-- local configuration for API URL, JWT, blocked sites, strict mode, and override window
-- account policy sync (v1.2.0): blocked sites, strict mode, override minutes, blocking policy (`always` / `focus-only` / `off`) and tracking pause follow the signed-in Arrakis account; see [`docs/extension-setup-guide.md`](../docs/extension-setup-guide.md)
+- popup controls for blocked sites, strict mode and override duration; production API configuration and short-lived account-token handoff are managed automatically
+- account policy sync: blocked sites, strict mode, override minutes, blocking policy (`always` / `focus-only` / `off`) and tracking pause follow the signed-in Arrakis account; see the repository's `docs/extension-setup-guide.md`
 
 ## Files
 
@@ -33,19 +33,15 @@ On the trusted Arrakis origins only, the web app posts `EXTENSION_PING` with a r
 1. Open `edge://extensions` in Microsoft Edge
 2. Turn on **Developer mode**
 3. Click **Load unpacked**
-4. Select the repository `extension/` folder (or the folder extracted from `arrakis-extension.zip`)
+4. Select the repository `extension/` folder (or the folder extracted from `dist/arrakis-edge-v1.1.0.zip`)
 
 See [`docs/EDGE_INSTALLATION.md`](../docs/EDGE_INSTALLATION.md) for step-by-step instructions, updating and troubleshooting.
 
 ## Configure
 
-1. Open the popup
-2. Set backend API URL
-3. Open the Arrakis app and sign in; the extension receives the short-lived access token from the trusted app origin. A JWT can also be entered manually for local setups.
-4. Add blocked domains
-5. Choose whether strict mode is enabled
-6. Set override minutes if strict mode is disabled
-7. Save configuration
+1. Open the Arrakis app and sign in. The extension connects through the trusted app origin and uses the production Arrakis API.
+2. Open the popup, add blocked domains, choose strict mode and set the override window.
+3. Save configuration. Blocking policy and tracking pause are managed in your Arrakis account settings.
 
 ## Tracking Model
 
@@ -67,7 +63,7 @@ See [`docs/EDGE_INSTALLATION.md`](../docs/EDGE_INSTALLATION.md) for step-by-step
 - account changes clear queued activity so events from one operative cannot be uploaded under another operative
 - if JWT is missing, activity remains buffered locally and sync status shows a warning
 - browser internal pages (`edge://`) are not tracked
-- automated unpacked-extension smoke coverage has exercised popup settings and blocking in Chromium and Microsoft Edge; Edge service-worker restart and Chromium timed-override behavior are covered. Store installation and account-token handoff in normal browser profiles still need manual verification.
+- automated unpacked-extension smoke coverage has exercised popup settings and blocking in Microsoft Edge; Edge service-worker restart and policy handoff are covered. Store installation still needs Partner Center validation.
 - blocking uses exact hostname and subdomain matching, not full-path matching
 - current source synchronizes hostnames and durations without page URLs or titles; pending sync events are deduplicated and expire after 24 hours
 - failed syncs retry with bounded exponential backoff using a persisted Chrome alarm, even when no tabs remain open

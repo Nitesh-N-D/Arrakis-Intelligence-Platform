@@ -61,7 +61,7 @@ test("extension error messages never reflect raw error contents", () => {
   const error = Object.assign(new Error("https://api.example/?token=secret"), { name: "TypeError" });
   const message = getSafeExtensionErrorMessage(error);
 
-  assert.equal(message, "The request failed. Check your connection and API URL.");
+  assert.equal(message, "The request failed. Check your connection and try again.");
   assert.equal(message.includes("secret"), false);
   assert.match(getSafeExtensionErrorMessage(Object.assign(new Error("secret"), { name: "AbortError" })), /timed out/);
   assert.match(getSafeExtensionErrorMessage(new Error("secret")), /extension action failed/i);
